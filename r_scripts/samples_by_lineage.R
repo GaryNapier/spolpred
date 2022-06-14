@@ -85,18 +85,18 @@ for(i in seq(lineage_data_split)){
     
     n <- nrow(x_split[[j]])
     
-    print(names(lineage_data_split[i]))
-    print(names(x_split[j]))
-    print(paste0("nrow = ", as.character(n)))
+    # print(names(lineage_data_split[i]))
+    # print(names(x_split[j]))
+    # print(paste0("nrow = ", as.character(n)))
     
     if(n < sample_n){
       
-      print("adding without sampling")
+      # print("adding without sampling")
       
       subset_list[[j]] <- x_split[[j]]
     }else{
       
-      print("adding with sampling")
+      # print("adding with sampling")
       
       set.seed(123)
       subset_list[[j]] <- x_split[[j]][sample(1:n, sample_n), ]
@@ -117,7 +117,7 @@ for(i in seq(final_lineage_data)){
 final_lineage_data <- do.call('rbind', final_lineage_data)
 
 # Write all samples...
-write.table(final_lineage_data$id, file = all_lineages_samples_file, 
+write.table(final_lineage_data$id, file = all_lineages_samples_outfile, 
             quote = F, row.names = F, col.names = F)
 # # ...and metadata
 # write.table(final_lineage_data, file = all_lineages_metadata_file, 
