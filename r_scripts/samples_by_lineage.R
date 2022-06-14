@@ -34,7 +34,7 @@ if (!TESTING){
   # Files ----
 
   lineage_file <- opt$lineage_file
-  sample_n <- opt$sample_n
+  sample_n <- as.numeric(opt$sample_n)
   all_lineages_samples_outfile <- opt$all_lineages_samples_outfile
   grouped_lins_prefix <- opt$grouped_lins_prefix
 
