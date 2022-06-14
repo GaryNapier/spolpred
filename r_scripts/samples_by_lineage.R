@@ -4,7 +4,7 @@ source("https://raw.githubusercontent.com/GaryNapier/Packages_functions/master/F
 
 library(optparse)
 
-TESTING <- 1
+TESTING <- 0
 
 if (!TESTING){
 
