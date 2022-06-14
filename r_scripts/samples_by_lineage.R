@@ -85,9 +85,18 @@ for(i in seq(lineage_data_split)){
     
     n <- nrow(x_split[[j]])
     
+    print(names(lineage_data_split[i]))
+    print(paste0("nrow = ", as.character(n)))
+    
     if(n < sample_n){
+      
+      print("adding without sampling")
+      
       subset_list[[j]] <- x_split[[j]]
     }else{
+      
+      print("adding with sampling")
+      
       set.seed(123)
       subset_list[[j]] <- x_split[[j]][sample(1:n, sample_n), ]
     }
