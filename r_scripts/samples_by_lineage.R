@@ -48,7 +48,6 @@ if (!TESTING){
   lineage_file <- paste0(results_path, "lineage_file.csv")
   # out
   all_lineages_samples_file <- paste0(results_path, "all_lineages_samples.txt")
-  # all_lineages_metadata_file <- paste0(results_path, "all_lineages_metadata.txt")
   grouped_lins_prefix <- paste0(results_path, "grouped_samples_")
   
 }
@@ -59,6 +58,7 @@ lineage_data <- read.csv(lineage_file)
 # Clean
 # lineage_data <- subset(lineage_data, !(main_lin == ""))
 lineage_data$main_lin <- ifelse(lineage_data$main_lin == "", "lineage8", lineage_data$main_lin)
+lineage_data$sublin <- ifelse(lineage_data$sublin == "", "lineage8", lineage_data$sublin)
 
 # Wrangle
 
@@ -86,6 +86,7 @@ for(i in seq(lineage_data_split)){
     n <- nrow(x_split[[j]])
     
     print(names(lineage_data_split[i]))
+    print(names(x_split[j]))
     print(paste0("nrow = ", as.character(n)))
     
     if(n < sample_n){
