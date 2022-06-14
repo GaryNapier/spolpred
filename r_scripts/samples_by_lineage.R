@@ -4,7 +4,7 @@ source("https://raw.githubusercontent.com/GaryNapier/Packages_functions/master/F
 
 library(optparse)
 
-TESTING <- 0
+TESTING <- 1
 
 if (!TESTING){
 
@@ -58,7 +58,7 @@ lineage_data <- read.csv(lineage_file)
 
 # Clean
 # lineage_data <- subset(lineage_data, !(main_lin == ""))
-lineage_data$main_lin <- ifelse(lineage_data$main_lin == "", "lineage_8", lineage_data$main_lin)
+lineage_data$main_lin <- ifelse(lineage_data$main_lin == "", "lineage8", lineage_data$main_lin)
 
 # Wrangle
 
