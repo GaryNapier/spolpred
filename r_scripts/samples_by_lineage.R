@@ -57,8 +57,8 @@ lineage_data <- read.csv(lineage_file)
 
 # Clean
 # lineage_data <- subset(lineage_data, !(main_lin == ""))
-lineage_data$main_lin <- ifelse(lineage_data$main_lin == "", "lineage8", lineage_data$main_lin)
-lineage_data$sublin <- ifelse(lineage_data$sublin == "", "lineage8", lineage_data$sublin)
+lineage_data$main_lin <- ifelse(lineage_data$main_lin == "", "lineage1", lineage_data$main_lin)
+lineage_data$sublin <- ifelse(lineage_data$sublin == "", "lineage1", lineage_data$sublin)
 
 # Wrangle
 
