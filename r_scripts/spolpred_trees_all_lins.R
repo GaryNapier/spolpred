@@ -59,12 +59,20 @@ lin_data <- dplyr::select(metadata, main_lin)
 spol_data <- dplyr::select(metadata, spoligotype)
 rd_data <- dplyr::select(metadata, rd)
 
+# Wrangle data 
+rd_split <- split(metadata, metadata$rd)
+rd_mrca <- lapply(rd_split, function(x){
+  getMRCA(all_lineages, x$id)
+})
+rd_df <- data.frame(node = as.vector(unlist(rd_mrca)), name = names(rd_mrca))
+rd_df <- subset(rd_df, !(name == "None"))
+
 # Change col headers to match legends 
 # colnames(lin_data) <- lin_data_lab
 
 # Colours
 alpha <- 0.9
-lin_colours <- rainbow(length(unique(metadata$main_lin)), alpha = alpha)
+lin_colours <- rainbow(length(unique(metadata$main_lin)), alpha = 1)
 spol_colours <- rainbow(length(unique(metadata$spoligotype)), alpha = alpha-0.2)
 rd_colours <- rainbow(length(unique(metadata$rd)), alpha = alpha-0.4)
 
@@ -88,9 +96,7 @@ max_dist <- castor::get_tree_span(all_lineages_tree, as_edge_count=FALSE)$max_di
 
 # Make tree ----
 
-ggtree_all_lineages <- ggtree(all_lineages_tree, size = line_sz, layout = "circular")
-
-ggtree_all_lineages <- ggtree_all_lineages + geom_tiplab
+ggtree_all_lineages <- ggtree(all_lineages_tree, size = line_sz, layout = "rectangular")
 
 # Add lineage data 
 lin_hm <- gheatmap(ggtree_all_lineages, lin_data, 
@@ -106,8 +112,58 @@ lin_hm <- gheatmap(ggtree_all_lineages, lin_data,
   # Define the legend title
   labs(fill = lin_data_lab)
 
+# # Pull the width of the strip from the plot just created in order to set offset for next strips
+ggtree_data <- ggplot2::ggplot_build(lin_hm)
+os <- unique(ggtree_data$data[[3]]$xmax)-unique(ggtree_data$data[[3]]$xmin)
+
+rd_tree <- lin_hm + geom_cladelab(data = rd_df, mapping = aes(node = node, label = name, color = name), fontsize = 3, offset = os, align = T)
+rd_tree
 
 
+
+# + vexpand(.1)
+
+
+
+
+
+
+
+
+
+
+
+# 
+# # Need to do this bit of code before adding the next heatmap
+# # See - See "7.3.1 Visualize tree with multiple associated matrix" https://yulab-smu.top/treedata-book/chapter7.html
+# lin_hm <- lin_hm + ggnewscale::new_scale_fill() 
+# 
+# 
+# # Spoligotype
+# spol_hm <- gheatmap(lin_hm, spol_data, 
+#                     width = width, 
+#                     offset = os, 
+#                     colnames_position = "top",
+#                     colnames_angle = angle, 
+#                     colnames_offset_y = 1,
+#                     hjust = 0,
+#                     font.size = font_sz) +
+#   # Add the custom colours defined above
+#   scale_fill_manual(values = spol_colours, breaks = names(spol_colours) )
+# 
+# spol_hm <- spol_hm + ggnewscale::new_scale_fill() 
+# 
+# rd_hm <- gheatmap(spol_hm, rd_data, 
+#                     width = width, 
+#                     offset = os*2, 
+#                     colnames_position = "top",
+#                     colnames_angle = angle, 
+#                     colnames_offset_y = 1,
+#                     hjust = 0,
+#                     font.size = font_sz) +
+#   # Add the custom colours defined above
+#   scale_fill_manual(values = rd_colours, breaks = names(rd_colours) )
+# 
 
 
 
