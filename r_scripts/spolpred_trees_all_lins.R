@@ -8,24 +8,28 @@ library(phytools) # Midpoint root
 library(ggnewscale) # For adding new heatmaps (annotations)
 library(plyr)
 library(dplyr)
+library(stringr)
 
 # Directories
 
 results_path <- "results/"
 newick_path <- "results/newick/"
-
+db_path <- "../pipeline/db/"
 # Files ----
 # in
 all_lineages_file <- paste0(newick_path, "all_lineages.treefile")
 metadata_file <- paste0(results_path, "lineage_file.csv")
+lin_lookup_file <- paste0(db_path, "lineage_conversions.txt")
 # out
 all_lineages_outfile <- paste0(results_path, "all_lineages.png")
 
 # Read in data ---- 
 all_lineages_tree <- read.tree(all_lineages_file)
 metadata <- read.csv(metadata_file)
+lin_lookup <- read.table(lin_lookup_file, header = T, sep = "\t")
 
 # Midpoint root ----
+
 all_lineages_tree <- phytools::midpoint.root(all_lineages_tree)
 n_samps <- length(all_lineages_tree$tip.label)
 
@@ -33,14 +37,10 @@ n_samps <- length(all_lineages_tree$tip.label)
 
 metadata <- subset(metadata, id %in% all_lineages_tree$tip.label)
 
-
 # TEST
 
 # metadata <- subset(metadata, main_lin == "lineage1")
 # all_lineages_tree <- keep.tip(all_lineages_tree, metadata$id)
-
-
-
 
 # Clean
 # lineage_data <- subset(lineage_data, !(main_lin == ""))
@@ -59,26 +59,79 @@ lin_data <- dplyr::select(metadata, main_lin)
 spol_data <- dplyr::select(metadata, spoligotype)
 rd_data <- dplyr::select(metadata, rd)
 
-# Wrangle data 
+
+
+
+
+
+lin_lookup$main_lineage <- substr(lin_lookup$mtbc_lineage, 1, 1)
+
+lookup_L2 <- subset(lin_lookup, main_lineage == "2")
+
+meta_L2 <- subset(metadata, main_lin == "2")
+
+meta_L2$lin_level_1 <- substr(meta_L2$sublin, 1, 1)
+meta_L2$lin_level_2 <- substr(meta_L2$sublin, 1, 3)
+meta_L2$lin_level_3 <- substr(meta_L2$sublin, 1, 5)
+meta_L2$lin_level_4 <- substr(meta_L2$sublin, 1, 7)
+
+
+meta_L2$lin_level_1
+
+lookup_L2$mtbc_lineage
+
+lookup_L2$rd_number
+
+
+
+
+
+
+# MRCA ----
+
+# Get MRCA for each lineage
+lin_split <- split(metadata, metadata$main_lin)
+lin_mrca <- lapply(lin_split, function(x){
+  getMRCA(all_lineages_tree, x$id)
+})
+lin_mrca_df <- data.frame(node = as.vector(unlist(lin_mrca)), name = names(lin_mrca))
+
+# Get MRCA for each RD
 rd_split <- split(metadata, metadata$rd)
 rd_mrca <- lapply(rd_split, function(x){
-  getMRCA(all_lineages, x$id)
+  getMRCA(all_lineages_tree, x$id)
 })
-rd_df <- data.frame(node = as.vector(unlist(rd_mrca)), name = names(rd_mrca))
-rd_df <- subset(rd_df, !(name == "None"))
+rd_mrca_df <- data.frame(node = as.vector(unlist(rd_mrca)), name = names(rd_mrca))
+rd_mrca_df <- subset(rd_mrca_df, !(name == "None"))
+
+
+
+
+
+
+
+
+
+
+# Clean up RDs 105 - 150
+rd_mrca_df$name <- gsub("RD105;RD207;RD181", "RD181", rd_mrca_df$name)
+rd_mrca_df$name <- gsub("RD181;RD142", "RD142", rd_mrca_df$name)
+rd_mrca_df$name <- gsub("RD181;RD150", "RD150", rd_mrca_df$name)
+rd_mrca_df$name <- gsub(";", "-", rd_mrca_df$name)
 
 # Change col headers to match legends 
-# colnames(lin_data) <- lin_data_lab
+colnames(lin_mrca_df) <- c("node", "lineage")
 
 # Colours
 alpha <- 0.9
 lin_colours <- rainbow(length(unique(metadata$main_lin)), alpha = 1)
 spol_colours <- rainbow(length(unique(metadata$spoligotype)), alpha = alpha-0.2)
-rd_colours <- rainbow(length(unique(metadata$rd)), alpha = alpha-0.4)
+# rd_colours <- rainbow(length(unique(metadata$rd)), alpha = alpha-0.4)
+rd_colours <- rep(c("black", "darkgrey"), length.out = length(rd_df$name))
 
 names(lin_colours) <- c(sort(unique(metadata$main_lin)))
 names(spol_colours) <- c(sort(unique(metadata$spoligotype)))
-names(rd_colours) <- c(sort(unique(metadata$rd)))
+names(rd_colours) <- rd_df$name
 
 # Set up ggtree parameters ----
 
@@ -87,7 +140,6 @@ font_sz <- 3
 line_sz <- 0.25
 angle <- 30
 
-y_lim <- c(-10, n_samps + (n_samps * 0.1))
 legend_spec <- theme(legend.title = element_text(size = 9),
                      legend.text = element_text(size = 7),
                      legend.key.size = unit(0.3, "cm"))
@@ -98,42 +150,43 @@ max_dist <- castor::get_tree_span(all_lineages_tree, as_edge_count=FALSE)$max_di
 
 ggtree_all_lineages <- ggtree(all_lineages_tree, size = line_sz, layout = "rectangular")
 
-# Add lineage data 
-lin_hm <- gheatmap(ggtree_all_lineages, lin_data, 
-                   width = width, 
-                   offset = 0, 
-                   colnames_position = "top",
-                   colnames_angle = angle, 
-                   colnames_offset_y = 1,
-                   hjust = 0,
-                   font.size = font_sz) +
-  # Add the custom colours defined above
-  scale_fill_manual(values = lin_colours, breaks = names(lin_colours) ) +
-  # Define the legend title
-  labs(fill = lin_data_lab)
+lin_tree <- ggtree_all_lineages + 
+geom_hilight(data = lin_mrca_df, 
+             mapping = aes(node = node, fill = lineage))+
+  scale_fill_manual(values = lin_colours)
+
+# # Add lineage data 
+# lin_hm <- gheatmap(ggtree_all_lineages, lin_data, 
+#                    width = width, 
+#                    offset = 0, 
+#                    colnames_position = "top",
+#                    colnames_angle = angle, 
+#                    colnames_offset_y = 1,
+#                    hjust = 0,
+#                    font.size = font_sz) +
+#   # Add the custom colours defined above
+#   scale_fill_manual(values = lin_colours, breaks = names(lin_colours) )
+#   # Define the legend title
+#   # labs(fill = lin_data_lab)
 
 # # Pull the width of the strip from the plot just created in order to set offset for next strips
-ggtree_data <- ggplot2::ggplot_build(lin_hm)
-os <- unique(ggtree_data$data[[3]]$xmax)-unique(ggtree_data$data[[3]]$xmin)
+# ggtree_data <- ggplot2::ggplot_build(lin_hm)
+# os <- unique(ggtree_data$data[[3]]$xmax)-unique(ggtree_data$data[[3]]$xmin)
 
-rd_tree <- lin_hm + geom_cladelab(data = rd_df, mapping = aes(node = node, label = name, color = name), fontsize = 3, offset = os, align = T)
-rd_tree
+ggtree_data <- ggplot2::ggplot_build(lin_tree)
+os <- max(unique(ggtree_data$data[[3]]$xmax)-unique(ggtree_data$data[[3]]$xmin))
 
-
-
-# + vexpand(.1)
-
-
-
-
-
-
-
+# lin_hm + geom_cladelab(data = rd_mrca_df,
+lin_tree + geom_cladelab(data = rd_mrca_df,
+                         mapping = aes(node = node, label = name), 
+                         fontsize = 3, 
+                         # offset = os/11,
+                         align = F)+
+  vexpand(.1)
+  # scale_color_manual(values = rd_colours)
 
 
 
-
-# 
 # # Need to do this bit of code before adding the next heatmap
 # # See - See "7.3.1 Visualize tree with multiple associated matrix" https://yulab-smu.top/treedata-book/chapter7.html
 # lin_hm <- lin_hm + ggnewscale::new_scale_fill() 
