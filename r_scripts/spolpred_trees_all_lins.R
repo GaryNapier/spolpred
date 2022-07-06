@@ -83,6 +83,12 @@ lookup_L2$mtbc_lineage
 lookup_L2$rd_number
 
 
+L2_rd_cleanup_df <- data.frame(rd_number = lookup_L2$rd_number, 
+                               rd_number_clean = c("RD105", "None", "RD207", "RD181", "RD150", "RD142", "RD207"))
+
+
+lookup_L2 <- merge(lookup_L2, L2_rd_cleanup_df, by = "rd_number", sort = F)
+
 
 
 
