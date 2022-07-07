@@ -10,6 +10,55 @@ library(plyr)
 library(dplyr)
 library(stringr)
 
+# Functions
+
+get_last <- function(x, split_on = ";"){
+  unlist(lapply(strsplit(x, split_on), function(x){
+    x[length(x)]
+  }))
+}
+
+len_str <- function(string){
+  length(unlist(strsplit(string, split = "")))
+}
+
+expand_hierarchy <- function(df, group_by_col_name, hierarchy_to_expand_col_name){
+  # Takes df like this:
+  #   ID      Group
+  # 1 samp_1  4.2.1.1
+  # 2 samp_2  1.2.1.2.1
+  
+  # And makes this:
+  #   ID    lin_level_1 lin_level_2 lin_level_3 lin_level_4 lin_level_5   max_lin
+  # 1 samp_1          4         4.2       4.2.1     4.2.1.1        <NA>   4.2.1.1
+  # 2 samp_2          1         1.2       1.2.1     1.2.1.2   1.2.1.2.1 1.2.1.2.1
+  
+  split_lins <- str_split(df[[hierarchy_to_expand_col_name]], "\\.")
+  max_lin_len <- max(sapply(split_lins, length))
+  mat <- matrix(nrow = length(df[[group_by_col_name]]), ncol = max_lin_len+1)
+  mat[, 1] <- df[[group_by_col_name]]
+  for(i in 1:nrow(mat)){
+    for(lin_level in 1:max_lin_len){
+      
+      len_lin <- length(split_lins[[i]])
+      
+      if(lin_level > len_lin){
+        mat[i, lin_level+1] <- NA
+      }else{
+        mat[i, lin_level+1] <- paste0(split_lins[[i]][1:lin_level], collapse = ".")
+      }
+    }
+  }
+  
+  max_lin <- vector()
+  for(i in seq(nrow(mat))){
+    max_lin[i] <- mat[i, which.max(sapply(mat[i, -1], len_str))+1]
+  }
+  mat <- data.frame(cbind(mat, max_lin), stringsAsFactors = F)
+  names(mat) <- c("ID", paste0("lin_level_", 1:(ncol(mat)-2) ), "max_lin")
+  return(mat)
+}
+
 # Directories
 
 results_path <- "results/"
@@ -37,8 +86,6 @@ n_samps <- length(all_lineages_tree$tip.label)
 
 metadata <- subset(metadata, id %in% all_lineages_tree$tip.label)
 
-# TEST
-
 # metadata <- subset(metadata, main_lin == "lineage1")
 # all_lineages_tree <- keep.tip(all_lineages_tree, metadata$id)
 
@@ -48,49 +95,70 @@ metadata$main_lin <- ifelse(metadata$main_lin == "", "lineage1", metadata$main_l
 metadata$sublin <- ifelse(metadata$sublin == "", "lineage1", metadata$sublin)
 
 # Lineages - remove 'lineage' and convert to factor
-metadata$main_lin <- factor(gsub('lineage', '', metadata$main_lin))
-metadata$sublin <- factor(gsub('lineage', '', metadata$sublin))
+metadata$main_lin <- gsub('lineage', '', metadata$main_lin)
+metadata$sublin <- gsub('lineage', '', metadata$sublin)
 
 # Make ID rownames of metadata so heatmap strips work in ggtree
 row.names(metadata) <- metadata$id
+
+# Add main lineage to lookup table
+lin_lookup$main_lineage <- unlist(lapply(strsplit(lin_lookup$mtbc_lineage, "\\."), function(x){x[1]}))
+
+# Clean up L2
+lin_lookup[lin_lookup[, "mtbc_lineage"] == "2.2.2", "rd_number"] <- "None"
+
+# Get the lowest level of the RDs
+lin_lookup$rd_lowest_level <- get_last(lin_lookup$rd_number)
+
+
+# TEST - subset just L2 because layered 
+lookup_L2 <- subset(lin_lookup, main_lineage == "2")
+meta_L2 <- subset(metadata, main_lin == "2")
+
+# Get the max dept of the sublins
+max_depth_lins <- max(unlist(lapply(strsplit(meta_L2$sublin, "\\."), length)))
+
+# Expand out the L2 lineages ready for merging
+expanded_lins <- expand_hierarchy(meta_L2, "id", "sublin")
+
+
+# # Parse out the lin levels into new cols
+# meta_L2$lin_level_1 <- substr(meta_L2$sublin, 1, 1)
+# meta_L2$lin_level_2 <- substr(meta_L2$sublin, 1, 3)
+# meta_L2$lin_level_3 <- substr(meta_L2$sublin, 1, 5)
+# meta_L2$lin_level_4 <- substr(meta_L2$sublin, 1, 7)
+
+
+# Subset the RD-lin lookup to just the lin and lowest level RD
+lookup_L2 <- select(lookup_L2, mtbc_lineage, rd_lowest_level)
+
+for(i in seq(max_depth_lins)){
+  col <- sprintf("lin_level_%s", i)
+  print(col)
+  expanded_lins <- merge(expanded_lins, lookup_L2,
+                   by.x = col, by.y = "mtbc_lineage",
+                   all.x = T,
+                   sort = F)
+  
+  names(expanded_lins)[ncol(expanded_lins)] <- sprintf("rd_level_%s", i)
+}
+
+
+
+
+
+# tableA %>% 
+#   inner_join(tableB, by = c("A_id" = "id"), suffix=c("_A","_B"))
+# 
+# 
+# meta_L2 %>% 
+#   inner_join(lookup_L2, by = c("lin_level_1" = "mtbc_lineage"), suffix = c("_A", "_B"))
+
 
 # Get data for separate heatmap strips
 lin_data <- dplyr::select(metadata, main_lin)
 spol_data <- dplyr::select(metadata, spoligotype)
 rd_data <- dplyr::select(metadata, rd)
-
-
-
-
-
-
-lin_lookup$main_lineage <- substr(lin_lookup$mtbc_lineage, 1, 1)
-
-lookup_L2 <- subset(lin_lookup, main_lineage == "2")
-
-meta_L2 <- subset(metadata, main_lin == "2")
-
-meta_L2$lin_level_1 <- substr(meta_L2$sublin, 1, 1)
-meta_L2$lin_level_2 <- substr(meta_L2$sublin, 1, 3)
-meta_L2$lin_level_3 <- substr(meta_L2$sublin, 1, 5)
-meta_L2$lin_level_4 <- substr(meta_L2$sublin, 1, 7)
-
-
-meta_L2$lin_level_1
-
-lookup_L2$mtbc_lineage
-
-lookup_L2$rd_number
-
-
-L2_rd_cleanup_df <- data.frame(rd_number = lookup_L2$rd_number, 
-                               rd_number_clean = c("RD105", "None", "RD207", "RD181", "RD150", "RD142", "RD207"))
-
-
-lookup_L2 <- merge(lookup_L2, L2_rd_cleanup_df, by = "rd_number", sort = F)
-
-
-
 
 
 # MRCA ----
