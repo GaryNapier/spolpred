@@ -266,18 +266,39 @@ rd_tree_no_L2 <- lin_tree + geom_cladelab(data = rd_mrca_no_L2,
                          mapping = aes(node = node, label = name), 
                          fontsize = 3, 
                          # offset = os/11,
-                         align = F)
+                         align = F, 
+                         horizontal=FALSE,
+                         angle = "auto", 
+                         offset.text = 0.0001)
+
+# geom_cladelab(offset=1,
+#               label="This Is A Very Long Clade Name",
+#               node=mrca(tree)["t41","t6"],
+#               horizontal=FALSE, 
+#               angle="auto", 
+#               vjust=1,hjust=0.5,colour="blue")
+
   # scale_color_manual(values = rd_colours)
 
-rd_tree_L2 <- rd_tree_no_L2
 offset <- 0.0001
-increase_offset <- 0.0005
+increase_offset <- 0.00075
+rd_tree_L2 <- rd_tree_no_L2
 for(i in seq(max_depth_lins_L2)){
+  
+  if(i == max_depth_lins_L2){
+    angle <- 100
+  }else{
+    angle <- "auto"
+  }
+  
   rd_tree_L2 <- rd_tree_L2 + geom_cladelab(data = rd_mrca_L2[[i]],
                            mapping = aes(node = node, label = name), 
                            fontsize = 3, 
                            offset = offset,
-                           align = F)
+                           align = F, 
+                           horizontal=FALSE, 
+                           angle = angle, 
+                           offset.text = 0.0001)
   offset <- offset + increase_offset
 }
 
