@@ -1,5 +1,3 @@
-
-
 setwd("~/Documents/spolpred/")
 
 library(ggplot2)
@@ -55,8 +53,12 @@ expand_hierarchy <- function(df, group_by_col_name, hierarchy_to_expand_col_name
     max_lin[i] <- mat[i, which.max(sapply(mat[i, -1], len_str))+1]
   }
   mat <- data.frame(cbind(mat, max_lin), stringsAsFactors = F)
-  names(mat) <- c("ID", paste0("lin_level_", 1:(ncol(mat)-2) ), "max_lin")
+  names(mat) <- c("id", paste0("lin_level_", 1:(ncol(mat)-2) ), "max_lin")
   return(mat)
+}
+
+gsub_df <- function(df, pattern, replacement){
+  data.frame(apply(df, 2, function(x){ gsub(pattern, replacement, x)}))
 }
 
 # Directories
@@ -116,10 +118,10 @@ lookup_L2 <- subset(lin_lookup, main_lineage == "2")
 meta_L2 <- subset(metadata, main_lin == "2")
 
 # Get the max dept of the sublins
-max_depth_lins <- max(unlist(lapply(strsplit(meta_L2$sublin, "\\."), length)))
+max_depth_lins_L2 <- max(unlist(lapply(strsplit(meta_L2$sublin, "\\."), length)))
 
 # Expand out the L2 lineages ready for merging
-expanded_lins <- expand_hierarchy(meta_L2, "id", "sublin")
+expanded_L2 <- expand_hierarchy(meta_L2, "id", "sublin")
 
 
 # # Parse out the lin levels into new cols
@@ -132,33 +134,28 @@ expanded_lins <- expand_hierarchy(meta_L2, "id", "sublin")
 # Subset the RD-lin lookup to just the lin and lowest level RD
 lookup_L2 <- select(lookup_L2, mtbc_lineage, rd_lowest_level)
 
-for(i in seq(max_depth_lins)){
+for(i in seq(max_depth_lins_L2)){
   col <- sprintf("lin_level_%s", i)
   print(col)
-  expanded_lins <- merge(expanded_lins, lookup_L2,
+  expanded_L2 <- merge(expanded_L2, lookup_L2,
                    by.x = col, by.y = "mtbc_lineage",
                    all.x = T,
                    sort = F)
   
-  names(expanded_lins)[ncol(expanded_lins)] <- sprintf("rd_level_%s", i)
+  names(expanded_L2)[ncol(expanded_L2)] <- sprintf("rd_level_%s", i)
 }
 
+# Replace None with NA - needs to be gaps rather than bar marking 'None'.
+expanded_L2 <- gsub_df(expanded_L2, "None", NA)
 
-
-
-
-# tableA %>% 
-#   inner_join(tableB, by = c("A_id" = "id"), suffix=c("_A","_B"))
-# 
-# 
-# meta_L2 %>% 
-#   inner_join(lookup_L2, by = c("lin_level_1" = "mtbc_lineage"), suffix = c("_A", "_B"))
+# Add row names for ggtree geom_cladelab data
+row.names(expanded_L2) <- expanded_L2$ID
 
 
 # Get data for separate heatmap strips
 lin_data <- dplyr::select(metadata, main_lin)
 spol_data <- dplyr::select(metadata, spoligotype)
-rd_data <- dplyr::select(metadata, rd)
+# rd_data <- dplyr::select(metadata, rd)
 
 
 # MRCA ----
@@ -171,27 +168,40 @@ lin_mrca <- lapply(lin_split, function(x){
 lin_mrca_df <- data.frame(node = as.vector(unlist(lin_mrca)), name = names(lin_mrca))
 
 # Get MRCA for each RD
-rd_split <- split(metadata, metadata$rd)
-rd_mrca <- lapply(rd_split, function(x){
+
+# Pull out L2 from metadata
+metadata_no_L2 <- subset(metadata, !(main_lin == "2"))
+
+# Loop over the expanded RD columns 
+rd_mrca_L2 <- list()
+for(i in seq(max_depth_lins_L2)){
+  col <- sprintf("rd_level_%s", i)
+  rd_split <- split(expanded_L2, expanded_L2[col])
+  rd_mrca_L2[[i]] <- lapply(rd_split, function(x){
+    getMRCA(all_lineages_tree, x$id)
+  })
+  rd_mrca_L2[[i]] <- data.frame(node = as.vector(unlist(rd_mrca_L2[[i]])), name = names(rd_mrca_L2[[i]]))
+}
+
+# rd_split <- split(metadata, metadata$rd)
+# rd_mrca <- lapply(rd_split, function(x){
+#   getMRCA(all_lineages_tree, x$id)
+# })
+# rd_mrca_df <- data.frame(node = as.vector(unlist(rd_mrca)), name = names(rd_mrca))
+# rd_mrca_df <- subset(rd_mrca_df, !(name == "None"))
+
+rd_split_no_L2 <- split(metadata_no_L2, metadata_no_L2$rd)
+rd_mrca_no_L2 <- lapply(rd_split_no_L2, function(x){
   getMRCA(all_lineages_tree, x$id)
 })
-rd_mrca_df <- data.frame(node = as.vector(unlist(rd_mrca)), name = names(rd_mrca))
-rd_mrca_df <- subset(rd_mrca_df, !(name == "None"))
-
-
-
-
-
-
-
-
-
+rd_mrca_no_L2 <- data.frame(node = as.vector(unlist(rd_mrca_no_L2)), name = names(rd_mrca_no_L2))
+rd_mrca_no_L2 <- subset(rd_mrca_no_L2, !(name == "None"))
 
 # Clean up RDs 105 - 150
-rd_mrca_df$name <- gsub("RD105;RD207;RD181", "RD181", rd_mrca_df$name)
-rd_mrca_df$name <- gsub("RD181;RD142", "RD142", rd_mrca_df$name)
-rd_mrca_df$name <- gsub("RD181;RD150", "RD150", rd_mrca_df$name)
-rd_mrca_df$name <- gsub(";", "-", rd_mrca_df$name)
+# rd_mrca_df$name <- gsub("RD105;RD207;RD181", "RD181", rd_mrca_df$name)
+# rd_mrca_df$name <- gsub("RD181;RD142", "RD142", rd_mrca_df$name)
+# rd_mrca_df$name <- gsub("RD181;RD150", "RD150", rd_mrca_df$name)
+# rd_mrca_df$name <- gsub(";", "-", rd_mrca_df$name)
 
 # Change col headers to match legends 
 colnames(lin_mrca_df) <- c("node", "lineage")
@@ -201,11 +211,11 @@ alpha <- 0.9
 lin_colours <- rainbow(length(unique(metadata$main_lin)), alpha = 1)
 spol_colours <- rainbow(length(unique(metadata$spoligotype)), alpha = alpha-0.2)
 # rd_colours <- rainbow(length(unique(metadata$rd)), alpha = alpha-0.4)
-rd_colours <- rep(c("black", "darkgrey"), length.out = length(rd_df$name))
+# rd_colours <- rep(c("black", "darkgrey"), length.out = length(rd_df$name))
 
 names(lin_colours) <- c(sort(unique(metadata$main_lin)))
 names(spol_colours) <- c(sort(unique(metadata$spoligotype)))
-names(rd_colours) <- rd_df$name
+# names(rd_colours) <- rd_df$name
 
 # Set up ggtree parameters ----
 
@@ -222,12 +232,12 @@ max_dist <- castor::get_tree_span(all_lineages_tree, as_edge_count=FALSE)$max_di
 
 # Make tree ----
 
-ggtree_all_lineages <- ggtree(all_lineages_tree, size = line_sz, layout = "rectangular")
-
+ggtree_all_lineages <- ggtree(all_lineages_tree, size = line_sz, layout = "circular")
 lin_tree <- ggtree_all_lineages + 
 geom_hilight(data = lin_mrca_df, 
              mapping = aes(node = node, fill = lineage))+
   scale_fill_manual(values = lin_colours)
+
 
 # # Add lineage data 
 # lin_hm <- gheatmap(ggtree_all_lineages, lin_data, 
@@ -251,13 +261,25 @@ ggtree_data <- ggplot2::ggplot_build(lin_tree)
 os <- max(unique(ggtree_data$data[[3]]$xmax)-unique(ggtree_data$data[[3]]$xmin))
 
 # lin_hm + geom_cladelab(data = rd_mrca_df,
-lin_tree + geom_cladelab(data = rd_mrca_df,
+# lin_tree + geom_cladelab(data = rd_mrca_df,
+rd_tree_no_L2 <- lin_tree + geom_cladelab(data = rd_mrca_no_L2,
                          mapping = aes(node = node, label = name), 
                          fontsize = 3, 
                          # offset = os/11,
-                         align = F)+
-  vexpand(.1)
+                         align = F)
   # scale_color_manual(values = rd_colours)
+
+rd_tree_L2 <- rd_tree_no_L2
+offset <- 0.0001
+increase_offset <- 0.0005
+for(i in seq(max_depth_lins_L2)){
+  rd_tree_L2 <- rd_tree_L2 + geom_cladelab(data = rd_mrca_L2[[i]],
+                           mapping = aes(node = node, label = name), 
+                           fontsize = 3, 
+                           offset = offset,
+                           align = F)
+  offset <- offset + increase_offset
+}
 
 
 
