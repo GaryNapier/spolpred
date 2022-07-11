@@ -49,46 +49,50 @@ setwd("~/Documents/spolpred/")
 data_path <- "data/"
 
 # Files
-spol_file <- paste0(data_path, "spoligotypes.csv")
+# spol_file <- paste0(data_path, "spoligotypes.csv")
+spol_file <- paste0(data_path, "spoligo_lineage.collated.txt")
 
 #load the data in
 
 # data <- read.table("spoligo_lineage.collated_noTotals.txt", header = TRUE)
-data <- read.csv(spol_file, colClasses = c("octal_spoligotype" = "character", "binary_spoligotype" = "character"))
+# data <- read.csv(spol_file, colClasses = c("octal_spoligotype" = "character", "binary_spoligotype" = "character"))
+data <- read.table(spol_file, header = T, sep = "\t", colClasses = c("Spoligotype" = "character"))
 
 # Exploratory ----
 
 head(data)
 nrow(data)
-length(unique(data$id))
-unique(data$main_lineage)
-unique(data$sublineage)
-unique(data$octal_spoligotype)
-unique(data$binary_spoligotype)
-"0000000000000000000000000000000000000000000" %in% data$binary_spoligotype
-subset(data, binary_spoligotype == "0000000000000000000000000000000000000000000")
+# length(unique(data$id))
+# unique(data$main_lineage)
+# unique(data$sublineage)
+# unique(data$octal_spoligotype)
+# unique(data$binary_spoligotype)
+# "0000000000000000000000000000000000000000000" %in% data$binary_spoligotype
+"0000000000000000000000000000000000000000000" %in% data$Spoligotype
+# subset(data, binary_spoligotype == "0000000000000000000000000000000000000000000")
+subset(data, Spoligotype == "0000000000000000000000000000000000000000000")
 # How many mixed/blank lins?
-sum(grepl(";", data[, "main_lineage"]))
-sum(grepl(";", data[, "sublineage"]))
-sum(data[, "main_lineage"] == "")
-sum(data[, "sublineage"] == "")
+# sum(grepl(";", data[, "main_lineage"]))
+# sum(grepl(";", data[, "sublineage"]))
+# sum(data[, "main_lineage"] == "")
+# sum(data[, "sublineage"] == "")
 
 # Clean ----
 
 # Removed mixed and blank lins
-data <- subset(data, !(main_lineage == "" | grepl(";", main_lineage) | sublineage == "" | grepl(";", sublineage)))
+# data <- subset(data, !(main_lineage == "" | grepl(";", main_lineage) | sublineage == "" | grepl(";", sublineage)))
 
 # Remove 'lineage'
-data$main_lineage <- gsub("lineage", "", data$main_lineage)
-data$sublineage <- gsub("lineage", "", data$sublineage)
+# data$main_lineage <- gsub("lineage", "", data$main_lineage)
+# data$sublineage <- gsub("lineage", "", data$sublineage)
 
 # Separate animal (deal with later)
-animal_data <- subset(data, grepl("La", main_lineage))
-data <- subset(data, !(grepl("La", main_lineage)))
+# animal_data <- subset(data, grepl("La", main_lineage))
+# data <- subset(data, !(grepl("La", main_lineage)))
 
 # Expand sublins
-expanded <- expand_hierarchy(data, "id", "sublineage")
-data <- merge(data, expanded, by = "id", sort = F)
+# expanded <- expand_hierarchy(data, "id", "sublineage")
+# data <- merge(data, expanded, by = "id", sort = F)
 
 
 # ----- CONOR NOTES -------
@@ -96,9 +100,10 @@ data <- merge(data, expanded, by = "id", sort = F)
 # conda activate r_env
 # cd /Users/cmeehan2/Desktop/SpoligoLineageComp/Ranalyses 
 
-# Use the spoligo_lineage.full.txt file and remove all after the . in the lineage. Also put a 's' before the spoligotype to ensure it is not included
-# Iteratively do this in other columns so that its sub-lineage (3.1) and then sub-sublineage (3.1.1) etc. if no sub-lineage for that spoligotype pattern,
-# retain the higher level lineage definition.
+# Use the spoligo_lineage.full.txt file and remove all after the . in the lineage. 
+# Also put a 's' before the spoligotype to ensure it is not included
+# Iteratively do this in other columns so that its sub-lineage (3.1) and then sub-sublineage (3.1.1) etc. 
+# if no sub-lineage for that spoligotype pattern, retain the higher level lineage definition.
 # Results in 4 levels
 # Use excel and BBedit to do this
 
@@ -114,7 +119,7 @@ data <- merge(data, expanded, by = "id", sort = F)
 # replace
 # \1\t\1\t
 
-#saved as spoligo_lineage_splits.txt
+# saved as spoligo_lineage_splits.txt
 
 # remove the s0000000000000000000000000000000000000000000 as this is an error
 # saved as spoligo_lineage_splits_noErrorSpol.txt 
@@ -125,143 +130,192 @@ data <- merge(data, expanded, by = "id", sort = F)
 # ----- CONOR NOTES -------
 
 s <- data[,-1]
+head(s)
 rownames(s) <- data[,1]
+head(s)
+# Remove total and percentage cols - see Conor notes above ("# Removed the totals from the collated file to use here")
+cols_rm <- c("Total.in.DB", "Percentage.of.DB")
+s <- s[, !(colnames(s) %in% cols_rm)]
+head(s)
+
 
 #Remove s0000000000000000000000000000000000000000000 as this is an error (cannot find spoligo)
 # row.names.remove <- c("s0000000000000000000000000000000000000000000")
 row.names.remove <- c("0000000000000000000000000000000000000000000")
 spol <- s[!(row.names(s) %in% row.names.remove), ]
+head(spol)
 
-
-
-# STUCK HERE
-
-#percentage how many spoligotypes appear in the data once, 1+, 5+, 10+, 100+
+# Percentage how many spoligotypes appear in the data once, 1+, 5+, 10+, 100+
 totalsSpols <- as.data.frame(rowSums(spol))
-
-# STUCK HERE
-
-
-
-
+head(totalsSpols)
 
 nrow(totalsSpols)										#3146
-sum(totalsSpols[,1] == 1)/ nrow(totalsSpols) *100		#58.39
-sum(totalsSpols[,1] > 1)/ nrow(totalsSpols) *100		#41.61	
-sum(totalsSpols[,1] > 5)/ nrow(totalsSpols) *100		#12.02
-sum(totalsSpols[,1] > 10)/ nrow(totalsSpols) *100		#7.41
-sum(totalsSpols[,1] > 100)/ nrow(totalsSpols) *100		#1.34
+sum(totalsSpols[,1] == 1)/ nrow(totalsSpols) *100		# 58.39
+sum(totalsSpols[,1] > 1)/ nrow(totalsSpols) *100		# 41.61	
+sum(totalsSpols[,1] > 5)/ nrow(totalsSpols) *100		# 12.02
+sum(totalsSpols[,1] > 10)/ nrow(totalsSpols) *100		# 7.41
+sum(totalsSpols[,1] > 100)/ nrow(totalsSpols) *100		# 1.34
 
-#How many spoligotypes contribute more than 1%, 5% of the data?
-dbTotal=colSums(totalsSpols)							#33180
-sum(totalsSpols[,1]/ dbTotal *100 > 1)					#10				
-sum(totalsSpols[,1]/ dbTotal *100 > 5)					#2
-sum(totalsSpols[,1]/ dbTotal *100 > 10)					#2			
+# How many spoligotypes contribute more than 1%, 5% of the data?
+dbTotal <- colSums(totalsSpols)							# 33180
+sum(totalsSpols[,1] / dbTotal * 100 > 1)					# 10				
+sum(totalsSpols[,1] / dbTotal * 100 > 5)					# 2
+sum(totalsSpols[,1] / dbTotal * 100 > 10)					# 2			
 
-
-#percentage how many lineages appear in the data once, 1+, 5+, 10+, 100+
-totalsLineages=as.data.frame(colSums(spol))
+# Percentage how many lineages appear in the data once, 1+, 5+, 10+, 100+
+totalsLineages <- as.data.frame(colSums(spol))
 nrow(totalsLineages)										#83
-sum(totalsLineages[1] == 1)/ nrow(totalsLineages) *100		#0
-sum(totalsLineages[,1] > 1)/ nrow(totalsLineages) *100		#100
-sum(totalsLineages[,1] > 5)/ nrow(totalsLineages) *100		#95.18
-sum(totalsLineages[,1] > 10)/ nrow(totalsLineages) *100		#93.97
-sum(totalsLineages[,1] > 100)/ nrow(totalsLineages) *100	#61.45
+sum(totalsLineages[1] == 1) / nrow(totalsLineages) * 100		# 0
+sum(totalsLineages[,1] > 1) / nrow(totalsLineages) * 100		# 100
+sum(totalsLineages[,1] > 5) / nrow(totalsLineages) * 100		# 95.18
+sum(totalsLineages[,1] > 10) / nrow(totalsLineages) * 100		# 93.97
+sum(totalsLineages[,1] > 100) / nrow(totalsLineages) * 100	# 61.45
 
 #How many lineages contribute more than 1%, 5% of the data?
-dbTotal=colSums(totalsLineages)								#33180
-sum(totalsLineages[,1]/ dbTotal *100 > 1)					#23
-sum(totalsLineages[,1]/ dbTotal *100 > 5)					#4
-sum(totalsLineages[,1]/ dbTotal *100 > 10)					#1
+dbTotal <- colSums(totalsLineages)								# 33180
+sum(totalsLineages[,1] / dbTotal * 100 > 1)					# 23
+sum(totalsLineages[,1] / dbTotal * 100 > 5)					# 4
+sum(totalsLineages[,1] / dbTotal * 100 > 10)					# 1
 
 
 
-#count how many spoligotypes are in more than 1 lineage etc
-data<- read.table("spoligo_lineage_splits_noErrorSpol.txt",header=TRUE)
+
+
+
+# -----------------------------------------------------------------------
+# Load in spoligo_lineage.full.txt and try to clean in same way as Conor
+# -----------------------------------------------------------------------
+
+spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
+spoligo_lineage_full <- read.table(spoligo_lineage_full_file, header = T, sep = "\t", 
+                                   colClasses = c("spoligotype" = "character"))
+heaD(spoligo_lineage_full)
+nrow(spoligo_lineage_full)
+
+# Clean ----
+
+# Remove "lineage"
+spoligo_lineage_full$lineage <- gsub("lineage", "", spoligo_lineage_full$lineage)
+
+# Expand lienages and merge
+exp <- expand_hierarchy(spoligo_lineage_full, "sample", "lineage")
+data <- merge(spoligo_lineage_full, exp,
+                              by.x = "sample", by.y = "id", all.x = T, 
+                              sort = F)
+head(data)
+# Remove 0000000000000000000000000000000000000000000 ? 
+data <- subset(data, !(spoligotype == "0000000000000000000000000000000000000000000"))
+heaD(data)
+
+# Remove everything except lin and spoligotype info
+data <- dplyr::select(data, sample:lineage, lin_level_1:max_lin)
+
+# Count how many spoligotypes are in more than 1 lineage etc
+# data <- read.table("spoligo_lineage_splits_noErrorSpol.txt", header=TRUE)
 s <- data[,-1]
 rownames(s) <- data[,1]
-lv1Summary <- data %>% count(spoligotype, lv1Lineage)
-SpoligoMultiLv1Lineage <- lv1Summary %>%   group_by(spoligotype) %>%   filter(n()>1)
-lv2Summary <- data %>% count(spoligotype, lv2Lineage)
+head(s)
+# lv1Summary <- data %>% count(spoligotype, lv1Lineage)
+lv1Summary <- data %>% count(spoligotype, lin_level_1)
+SpoligoMultiLv1Lineage <- lv1Summary %>% group_by(spoligotype) %>% filter(n()>1)
+# lv2Summary <- data %>% count(spoligotype, lv2Lineage)
+lv2Summary <- data %>% count(spoligotype, lin_level_2)
 SpoligoMultiLv2Lineage <- lv2Summary %>%   group_by(spoligotype) %>%   filter(n()>1)
-lv3Summary <- data %>% count(spoligotype, lv3Lineage)
+# lv3Summary <- data %>% count(spoligotype, lv3Lineage)
+lv3Summary <- data %>% count(spoligotype, lin_level_3)
 SpoligoMultiLv3Lineage <- lv3Summary %>%   group_by(spoligotype) %>%   filter(n()>1)
-lv4Summary <- data %>% count(spoligotype, lv4Lineage)
+# lv4Summary <- data %>% count(spoligotype, lv4Lineage)
+lv4Summary <- data %>% count(spoligotype, lin_level_4)
 SpoligoMultiLv4Lineage <- lv4Summary %>%   group_by(spoligotype) %>%   filter(n()>1)
+lv5Summary <- data %>% count(spoligotype, lin_level_5)
+SpoligoMultiLv5Lineage <- lv5Summary %>%   group_by(spoligotype) %>%   filter(n()>1)
 
-#in more than 2 lineages
-SpoligoMultiLv1Lineage2 <- lv1Summary %>%   group_by(spoligotype) %>%   filter(n()>2)
-SpoligoMultiLv2Lineage2 <- lv2Summary %>%   group_by(spoligotype) %>%   filter(n()>2)
-SpoligoMultiLv3Lineage2 <- lv3Summary %>%   group_by(spoligotype) %>%   filter(n()>2)
-SpoligoMultiLv4Lineage2 <- lv4Summary %>%   group_by(spoligotype) %>%   filter(n()>2)
+# in more than 2 lineages
+SpoligoMultiLv1Lineage2 <- lv1Summary %>% group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv2Lineage2 <- lv2Summary %>% group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv3Lineage2 <- lv3Summary %>% group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv4Lineage2 <- lv4Summary %>% group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv5Lineage2 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>2)
 
 #in more than 3 lineages
-SpoligoMultiLv1Lineage3 <- lv1Summary %>%   group_by(spoligotype) %>%   filter(n()>3)
-SpoligoMultiLv2Lineage3 <- lv2Summary %>%   group_by(spoligotype) %>%   filter(n()>3)
-SpoligoMultiLv3Lineage3 <- lv3Summary %>%   group_by(spoligotype) %>%   filter(n()>3)
-SpoligoMultiLv4Lineage3 <- lv4Summary %>%   group_by(spoligotype) %>%   filter(n()>3)
+SpoligoMultiLv1Lineage3 <- lv1Summary %>% group_by(spoligotype) %>%   filter(n()>3)
+SpoligoMultiLv2Lineage3 <- lv2Summary %>% group_by(spoligotype) %>%   filter(n()>3)
+SpoligoMultiLv3Lineage3 <- lv3Summary %>% group_by(spoligotype) %>%   filter(n()>3)
+SpoligoMultiLv4Lineage3 <- lv4Summary %>% group_by(spoligotype) %>%   filter(n()>3)
+SpoligoMultiLv5Lineage3 <- lv5Summary %>% group_by(spoligotype) %>%   filter(n()>3)
 
 #in more than 4 lineages
-SpoligoMultiLv1Lineage4 <- lv1Summary %>%   group_by(spoligotype) %>%   filter(n()>4)
-SpoligoMultiLv2Lineage4 <- lv2Summary %>%   group_by(spoligotype) %>%   filter(n()>4)
-SpoligoMultiLv3Lineage4 <- lv3Summary %>%   group_by(spoligotype) %>%   filter(n()>4)
-SpoligoMultiLv4Lineage4 <- lv4Summary %>%   group_by(spoligotype) %>%   filter(n()>4)
+SpoligoMultiLv1Lineage4 <- lv1Summary %>% group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv2Lineage4 <- lv2Summary %>% group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv3Lineage4 <- lv3Summary %>% group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv4Lineage4 <- lv4Summary %>% group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv5Lineage4 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>4)
 
 
-#TO DO
-#Keep only those with 5 or more samples per spoligo
+# TO DO
+# Keep only those with 5 or more samples per spoligo
+SpoligoOver5Samples <- data %>% group_by(spoligotype) %>% filter(n() > 4)
 
-SpoligoOver5Samples <- data %>%   group_by(spoligotype) %>%   filter(n()>4)
-#29,211 samples
-write.table(SpoligoOver5Samples, "/Users/cmeehan2/Desktop/SpoligoLineageComp/Ranalyses/spoligo_lineage_splits_noErrorSpol_over5samples.txt", sep="\t", quote = FALSE, row.names = FALSE)
+# 29,211 samples
+# write.table(SpoligoOver5Samples,
+#             "/Users/cmeehan2/Desktop/SpoligoLineageComp/Ranalyses/spoligo_lineage_splits_noErrorSpol_over5samples.txt", 
+#             sep="\t", quote = FALSE, row.names = FALSE)
 
+over_five_file <- paste0(data_path, "/spoligo_lineage_splits_noErrorSpol_over5samples.txt")
+write.table(data.frame(SpoligoOver5Samples),
+            over_five_file,
+            sep="\t", quote = FALSE, row.names = FALSE)
 
-
-
-
-
-#Look at correlation between spoligotype and lineage levels
-
-
-#get the Theil's U correlation between the spoligo and the 4 levels of lineage
+# Look at correlation between spoligotype and lineage levels
+# get the Theil's U correlation between the spoligo and the 4 levels of lineage
 # python ~/Dropbox/Scripts/TheilsU_mx.py --matrix spoligo_lineage_splits_noErrorSpol_over5samples.txt
 
-
-#load the data into Rm on seerver
+# load the data into R on server
 
 library(dplyr)
-
-data <- read.table("spoligo_lineage_splits_noErrorSpol_over5samples.txt", header = TRUE)
+data <- read.table(over_five_file, header = T, sep = "\t", 
+                   colClasses = c("spoligotype" = "character"))
+head(data)
 
 s <- data[,-1]
 rownames(s) <- data[,1]
-
+head(s)
 
 # Do ANOVA between lineages (USEFUL??)
-fm <- aov(as.numeric(spoligotype) ~ lv1Lineage, data=data)
+# fm <- aov(as.numeric(spoligotype) ~ lv1Lineage, data=data)
+fm <- aov(as.numeric(spoligotype) ~ lin_level_1, data = data)
 a <- anova(fm)
 a
-posthoc <- TukeyHSD(x = fm, 'lv1Lineage', conf.level = 0.95)
+# posthoc <- TukeyHSD(x = fm, 'lv1Lineage', conf.level = 0.95)
+posthoc <- TukeyHSD(x = fm, 'lin_level_1', conf.level = 0.95)
 posthoc
-fm <- aov(as.numeric(spoligotype) ~ lv2Lineage, data = data)
+# fm <- aov(as.numeric(spoligotype) ~ lv2Lineage, data = data)
+fm <- aov(as.numeric(spoligotype) ~ lin_level_2, data = data)
 a <- anova(fm)
 a
-fm <- aov(as.numeric(spoligotype) ~ lv3Lineage, data = data)
+# fm <- aov(as.numeric(spoligotype) ~ lv3Lineage, data = data)
+fm <- aov(as.numeric(spoligotype) ~ lin_level_3, data = data)
 a <- anova(fm)
 a
-fm <- aov(as.numeric(spoligotype) ~ lv4Lineage, data = data)
+# fm <- aov(as.numeric(spoligotype) ~ lv4Lineage, data = data)
+fm <- aov(as.numeric(spoligotype) ~ lin_level_4, data = data)
 a <- anova(fm)
 a
 
-
-#Build a predictor of lineage from spoligo using Random Forest
-#Matthews corrrlation coefficient or f-statistic or MCC?
+# Build a predictor of lineage from spoligo using Random Forest
+# Matthews corrrlation coefficient or f-statistic or MCC?
 
 #random forest with h20
 library(h2o)
 h2o.init()
 
-dataRF <- h2o.importFile("/mnt/DATA2/conor/spoligoAllLineages/Ranalyses/spoligo_lineage_splits_noErrorSpol_over5samples.txt", header=TRUE)
+# dataRF <- h2o.importFile(
+#   "/mnt/DATA2/conor/spoligoAllLineages/Ranalyses/spoligo_lineage_splits_noErrorSpol_over5samples.txt", 
+#   header=TRUE)
+
+dataRF <- h2o.importFile(
+  over_five_file, 
+  header=TRUE)
 
 # Set the predictors and response for Lv1Lineage
 predictors <- c("spoligotype")
@@ -271,7 +325,6 @@ responselv1 <- "lv1Lineage"
 data_split <- h2o.splitFrame(data = dataRF, ratios = 0.8)
 train <- data_split[[1]]
 valid <- data_split[[2]]
-
 
 #Create predictor
 data_drflv1 <- h2o.randomForest(x = predictors, y = responselv1, ntrees = 1000, max_depth = 0, nfolds = 5,
