@@ -2,8 +2,11 @@
 library(sjmisc)
 library(dplyr)
 library(tibble)
+library(stringr)
 
 # Functions ----
+
+source("https://raw.githubusercontent.com/GaryNapier/Packages_functions/master/Functions.R")
 
 expand_hierarchy <- function(df, group_by_col_name, hierarchy_to_expand_col_name){
   # Takes df like this:
@@ -16,7 +19,7 @@ expand_hierarchy <- function(df, group_by_col_name, hierarchy_to_expand_col_name
   # 1 samp_1          4         4.2       4.2.1     4.2.1.1        <NA>   4.2.1.1
   # 2 samp_2          1         1.2       1.2.1     1.2.1.2   1.2.1.2.1 1.2.1.2.1
   
-  split_lins <- str_split(df[[hierarchy_to_expand_col_name]], "\\.")
+  split_lins <- stringr::str_split(df[[hierarchy_to_expand_col_name]], "\\.")
   max_lin_len <- max(sapply(split_lins, length))
   mat <- matrix(nrow = length(df[[group_by_col_name]]), ncol = max_lin_len+1)
   mat[, 1] <- df[[group_by_col_name]]
@@ -261,10 +264,14 @@ SpoligoOver5Samples <- data %>% group_by(spoligotype) %>% filter(n() > 4)
 #             "/Users/cmeehan2/Desktop/SpoligoLineageComp/Ranalyses/spoligo_lineage_splits_noErrorSpol_over5samples.txt", 
 #             sep="\t", quote = FALSE, row.names = FALSE)
 
-over_five_file <- paste0(data_path, "/spoligo_lineage_splits_noErrorSpol_over5samples.txt")
+over_five_file <- paste0(data_path, "spoligo_lineage_splits_noErrorSpol_over5samples.txt")
 write.table(data.frame(SpoligoOver5Samples),
             over_five_file,
             sep="\t", quote = FALSE, row.names = FALSE)
+over_five_file_csv <- paste0(data_path, "spoligo_lineage_splits_noErrorSpol_over5samples.csv")
+write.csv(data.frame(SpoligoOver5Samples),
+          over_five_file_csv,
+          quote = FALSE, row.names = FALSE)
 
 # Look at correlation between spoligotype and lineage levels
 # get the Theil's U correlation between the spoligo and the 4 levels of lineage
@@ -303,25 +310,56 @@ a <- anova(fm)
 a
 
 # Build a predictor of lineage from spoligo using Random Forest
-# Matthews corrrlation coefficient or f-statistic or MCC?
+# Matthews correlation coefficient or f-statistic or MCC?
 
-#random forest with h20
+# Random forest with h20
 library(h2o)
+
+java_path <- "/home/lsh1807750/miniconda3/bin/"
+old_path <- Sys.getenv("PATH")
+Sys.setenv(PATH = paste(java_path, old_path, sep = ":"))
 h2o.init()
 
 # dataRF <- h2o.importFile(
 #   "/mnt/DATA2/conor/spoligoAllLineages/Ranalyses/spoligo_lineage_splits_noErrorSpol_over5samples.txt", 
 #   header=TRUE)
 
-dataRF <- h2o.importFile(
-  over_five_file, 
-  header=TRUE)
+
+# dataRF <- h2o.importFile(
+#   paste0("/home/lsh1807750/Documents/spolpred/", over_five_file),
+#   header=TRUE)
+# 
+# dataRF <- h2o.importFile(
+#   paste0("/home/lsh1807750/Documents/spolpred/", over_five_file_csv),
+#   header=TRUE)
+
+
+
+
+# x <- read.csv("data/test.csv", colClasses = c("spoligotype" = "character", 
+#                                               "lin_level_1" = "character", 
+#                                               "lin_level_2" = "character"))
+
+dataRF <- read.csv(over_five_file_csv, colClasses = c("spoligotype" = "factor", 
+                                              "lin_level_1" = "factor", 
+                                              "lin_level_2" = "factor"), 
+                   stringsAsFactors = T)
+
+dataRF <- as.h2o(dataRF)
+
+# dataRF <- h2o.importFile(
+#   paste0("/home/lsh1807750/Documents/spolpred/data/test.csv"), 
+#   header=TRUE, 
+#   col.types = "string")
+
+
 
 # Set the predictors and response for Lv1Lineage
 predictors <- c("spoligotype")
-responselv1 <- "lv1Lineage"
+# responselv1 <- "lv1Lineage"
+responselv1 <- "lin_level_1"
 
-# Split the dataset into a train and valid set: #not used in cross fold validation
+# Split the dataset into a train and valid set: # not used in cross fold validation
 data_split <- h2o.splitFrame(data = dataRF, ratios = 0.8)
 train <- data_split[[1]]
 valid <- data_split[[2]]
@@ -333,10 +371,10 @@ data_drflv1 <- h2o.randomForest(x = predictors, y = responselv1, ntrees = 1000, 
                              training_frame = dataRF,
                              balance_classes = TRUE)
 
-#save the model
+# save the model
 lv1model_path <- h2o.saveModel(object = data_drflv1, path = getwd(), force = TRUE)
 print(lv1model_path)
-#returns /mnt/DATA2/conor/spoligoAllLineages/Ranalyses/DRF_model_R_1618824303760_17
+# returns /mnt/DATA2/conor/spoligoAllLineages/Ranalyses/DRF_model_R_1618824303760_17
 
 # Eval performance:
 perflv1 <- h2o.performance(data_drflv1)
@@ -397,7 +435,8 @@ predictlv1 <- h2o.predict(data_drflv1, newdata = valid)
 
 # Set the predictors and response for Lv2Lineage
 predictors <- c("spoligotype")
-responselv2 <- "lv2Lineage"
+# responselv2 <- "lv2Lineage"
+responselv2 <- "lin_level_2"
 
 # Split the dataset into a train and valid set:
 data_split <- h2o.splitFrame(data = dataRF, ratios = 0.8)
@@ -522,7 +561,8 @@ predictlv2 <- h2o.predict(data_drflv2, newdata = valid)
 
 # Set the predictors and response for Lv3Lineage
 predictors <- c("spoligotype")
-responselv3 <- "lv3Lineage"
+# responselv3 <- "lv3Lineage"
+responselv3 <- "lin_level_3"
 
 # Split the dataset into a train and valid set:
 data_split <- h2o.splitFrame(data = dataRF, ratios = 0.8)
@@ -575,7 +615,8 @@ predictlv3 <- h2o.predict(data_drflv3, newdata = valid)
 
 # Set the predictors and response for Lv3Lineage
 predictors <- c("spoligotype")
-responselv4 <- "lv4Lineage"
+# responselv4 <- "lv4Lineage"
+responselv4 <- "lin_level_4"
 
 # Split the dataset into a train and valid set:
 data_split <- h2o.splitFrame(data = dataRF, ratios = 0.8)
