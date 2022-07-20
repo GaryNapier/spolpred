@@ -365,11 +365,11 @@ train <- data_split[[1]]
 valid <- data_split[[2]]
 
 #Create predictor
-data_drflv1 <- h2o.randomForest(x = predictors, y = responselv1, ntrees = 1000, max_depth = 0, nfolds = 5,
-                             min_rows = 1,
-                             categorical_encoding = "auto",
-                             training_frame = dataRF,
-                             balance_classes = TRUE)
+data_drflv1 <- h2o.randomForest(x = predictors, y = responselv1, ntrees = 1000, max_depth = 0, nfolds = 5, 
+                                min_rows = 1,
+                                categorical_encoding = "auto",
+                                training_frame = dataRF,
+                                balance_classes = TRUE)
 
 # save the model
 lv1model_path <- h2o.saveModel(object = data_drflv1, path = getwd(), force = TRUE)
