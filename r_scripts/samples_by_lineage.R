@@ -11,7 +11,9 @@ if (!TESTING){
   # Arguments ----
 
   option_list = list(
-    make_option(c("-n", "--sample_n"), type="character", default=10,
+    # make_option(c("-n", "--sample_n"), type="character", default=10,
+    #             help="max number of samples in each sublineage", metavar="character"),
+    make_option(c("-p", "--sample_pc"), type="character", default=10,
                 help="max number of samples in each sublineage", metavar="character"),
     make_option(c("-l", "--lineage_file"), type="character", default=NULL,
                 help="metadata of all samples and their lineage data", metavar="character"),
@@ -30,24 +32,31 @@ if (!TESTING){
   print(str(opt))
 
   # Setup
+  
+  # Variables ----
+  
+  # Pull minimum number of samples from each sublin
+  min_samples <- 10
 
   # Files ----
 
   lineage_file <- opt$lineage_file
-  sample_n <- as.numeric(opt$sample_n)
+  # sample_n <- as.numeric(opt$sample_n)
+  sample_pc <- as.numeric(opt$sample_pc)
   all_lineages_samples_outfile <- opt$all_lineages_samples_outfile
   grouped_lins_prefix <- opt$grouped_lins_prefix
 
 }else{
   
-  sample_n <- 10
+  # sample_n <- 10
+  sample_pc <- 25
   
   # in
   setwd("~/Documents/spolpred/")
   results_path <- "results/"
   lineage_file <- paste0(results_path, "lineage_file.csv")
   # out
-  all_lineages_samples_file <- paste0(results_path, "all_lineages_samples.txt")
+  all_lineages_samples_outfile <- paste0(results_path, "all_lineages_samples.txt")
   grouped_lins_prefix <- paste0(results_path, "grouped_samples_")
   
 }
@@ -76,6 +85,7 @@ lineage_data_split <- split(lineage_data, lineage_data$grouped_lin)
 
 # Go through main lineages and subset by taking x number of samples from each sublin
 final_lineage_data <- list()
+
 for(i in seq(lineage_data_split)){
   
   x <- lineage_data_split[[i]]
@@ -83,23 +93,33 @@ for(i in seq(lineage_data_split)){
   subset_list <- list()
   for(j in seq(x_split)){
     
+    # Total samples in the sublin
     n <- nrow(x_split[[j]])
+    # Get x% of the total number of samples
+    n_pc <- floor(n/sample_pc)
     
     # print(names(lineage_data_split[i]))
     # print(names(x_split[j]))
     # print(paste0("nrow = ", as.character(n)))
     
-    if(n < sample_n){
-      
-      # print("adding without sampling")
+    # Pull all the samples from a sublin if <= min number of samples
+    # if(n < sample_n){
+    if(n <= min_samples){
       
       subset_list[[j]] <- x_split[[j]]
+    
+    # If the % of total samples is <= min number of samples, then pull a random sample of the min number of samples 
+    }else if(n_pc <= min_samples){
+      
+      subset_list[[j]] <- x_split[[j]][sample(1:n, min_samples), ]
+      
     }else{
       
       # print("adding with sampling")
       
       set.seed(123)
-      subset_list[[j]] <- x_split[[j]][sample(1:n, sample_n), ]
+      # subset_list[[j]] <- x_split[[j]][sample(1:n, sample_n), ]
+      subset_list[[j]] <- x_split[[j]][sample(1:n, n_pc), ]
     }
   }
   final_lineage_data[[i]] <- do.call('rbind', subset_list)
@@ -114,9 +134,8 @@ for(i in seq(final_lineage_data)){
   write.table(final_lineage_data[[i]]$id, file = file, quote = F, row.names = F, col.names = F)
 }
 
-final_lineage_data <- do.call('rbind', final_lineage_data)
-
 # Write all samples...
+final_lineage_data <- do.call('rbind', final_lineage_data)
 write.table(final_lineage_data$id, file = all_lineages_samples_outfile, 
             quote = F, row.names = F, col.names = F)
 # # ...and metadata
