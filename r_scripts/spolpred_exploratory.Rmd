@@ -226,22 +226,20 @@ SpoligoMultiLv5Lineage4 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>4
 
 ```{r plots, echo = T, warning=F}
 
+
+rf_fit <- train(as.factor(old) ~ ., 
+                data = abalone_train, 
+                method = "ranger")
+
 library(caret)
 
-dummy <- read.csv(paste0(data_path, "dummy_data.csv"))
-
-rf_fit <- train(lineage ~ spol,
-                data = dummy,
+rf_fit <- train(lin_level_1 ~ spoligotype, 
+                data = data, 
                 method = "ranger")
 
 rf_fit
 
-# predict the outcome on a test set
-rf_pred <- predict(rf_fit, dummy)
-# compare predicted outcome and true outcome
-# confusionMatrix(rf_fit, as.factor(dummy$spol))
-confusionMatrix(rf_pred, as.factor(dummy$lineage))
-
+confusionMatrix(rf_fit, as.factor(data$spoligotype))
 
 ```
 
