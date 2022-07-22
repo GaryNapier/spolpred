@@ -40,9 +40,10 @@ itol_templates_path <- "../pipeline/itol_templates/"
 # Files ----
 
 spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
-l3_treefile <- paste0(newick_path, "grouped_samples_lineage3.treefile")
+# l3_treefile <- paste0(newick_path, "grouped_samples_lineage3.treefile")
+l3_treefile <- paste0(newick_path, "lin_3_all_samps.treefile")
 itol_binary_template_file <- paste0(itol_templates_path, "itol.binary.txt")
-itol_outfile <- paste0(results_path, "itol_l3_binary.txt")
+itol_outfile <- paste0(results_path, "itol_all_spol_binary.txt")
 
 # Read in data ----
 spoligo_lineage_full <- read.table(spoligo_lineage_full_file, header = T, sep = "\t", 
@@ -53,7 +54,7 @@ itol_binary_template <- readChar(itol_binary_template_file, nchars = 1e6)
 
 # Clean ----
 
-l3_samples <- l3_tree$tip.label
+# l3_samples <- l3_tree$tip.label
 
 # Remove "lineage"
 spoligo_lineage_full$lineage <- gsub("lineage", "", spoligo_lineage_full$lineage)
@@ -83,16 +84,16 @@ data <- data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
 rownames(data) <- data$sample
 
 # Subset L3 
-l3_spol_data <- subset(data, sample %in% l3_samples)
+# l3_spol_data <- subset(data, sample %in% l3_samples)
 # Add binary cols
-l3_spol_data <- get_binary_cols(l3_spol_data, "spoligotype", "s")
+spol_data <- get_binary_cols(data, "spoligotype", "s")
 # subset spol data 
-spol_data <- select(l3_spol_data, s1:s43)
+spol_data_ggplot <- select(spol_data, s1:s43)
 
 
 # itol ----
 
-itol_data <- select(l3_spol_data, sample, s1:s43)
+itol_data <- select(spol_data, sample, s1:s43)
 len_spol <- len_str("1110000000111111111111000000000000011111000")
 
 # FIELD_SHAPES,1,1,1
@@ -118,34 +119,34 @@ write.table(itol_data, file = itol_outfile,
 
 
 
-# # Set up ggtree parameters ----
-# 
-# width <- 0.05
-# font_sz <- 3
-# line_sz <- 0.25
-# angle <- 30
-# 
-# tree <- ggtree(l3_tree, size = line_sz, layout = "circular")
-# 
-# gheatmap(tree, spol_data,
-#          # Increase offset
-#          # offset = offset+200,
-#          # width = width+0.5,
-#          # Change color to black
-#          # color = NULL,
-#          color="black",
-#          low="white", 
-#          high="black", 
-#          colnames_position = "top",
-#          # colnames_angle = angle, 
-#          colnames_offset_y = 1,
-#          hjust = 0,
-#          font.size = 2.5) +
-#   # Define colours
-#   scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-#   labs(fill = "Spoligotype")
-# 
-# 
+# Set up ggtree parameters ----
+
+width <- 0.05
+font_sz <- 3
+line_sz <- 0.25
+angle <- 30
+
+tree <- ggtree(l3_tree, size = line_sz, layout = "circular")
+
+gheatmap(tree, spol_data_ggplot,
+         # Increase offset
+         # offset = offset+200,
+         # width = width+0.5,
+         # Change color to black
+         # color = NULL,
+         color="black",
+         low="white",
+         high="black",
+         colnames_position = "top",
+         # colnames_angle = angle,
+         colnames_offset_y = 1,
+         hjust = 0,
+         font.size = 2.5) +
+  # Define colours
+  scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+  labs(fill = "Spoligotype")
+
+
 
 
 
