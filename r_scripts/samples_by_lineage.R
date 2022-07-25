@@ -1,5 +1,15 @@
 #!/usr/bin/env Rscript
 
+# Select 25% of samples in each sublineage. 
+# If 25% of the sublineage is less than ten samples then take ten samples.
+# If there are less than ten samples in the sublineage then take all those samples.
+# Lineages are processed by groups because of small sample sizes in main lineages:
+#   - lineages 5, 6, 8", 9, La1, La2, La3 -> L_5_6_8_9_La
+#   - lineages 1, lineage7 -> L_1_7
+#   - lineage 3
+#   - lineage 4
+# Outputs one sample list per lineage group
+
 source("https://raw.githubusercontent.com/GaryNapier/Packages_functions/master/Functions.R")
 
 library(optparse)
