@@ -233,6 +233,7 @@ max_dist <- castor::get_tree_span(all_lineages_tree, as_edge_count=FALSE)$max_di
 # Make tree ----
 
 ggtree_all_lineages <- ggtree(all_lineages_tree, size = line_sz, layout = "circular")
+
 lin_tree <- ggtree_all_lineages + 
 geom_hilight(data = lin_mrca_df, 
              mapping = aes(node = node, fill = lineage))+
@@ -267,8 +268,8 @@ rd_tree_no_L2 <- lin_tree + geom_cladelab(data = rd_mrca_no_L2,
                          fontsize = 3, 
                          # offset = os/11,
                          align = F, 
-                         horizontal=FALSE,
-                         angle = "auto", 
+                         horizontal = T,
+                         angle = "auto",
                          offset.text = 0.0001)
 
 # geom_cladelab(offset=1,

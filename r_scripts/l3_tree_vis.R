@@ -40,8 +40,8 @@ itol_templates_path <- "../pipeline/itol_templates/"
 # Files ----
 
 spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
-# l3_treefile <- paste0(newick_path, "grouped_samples_lineage3.treefile")
-l3_treefile <- paste0(newick_path, "lin_3_all_samps.treefile")
+l3_treefile <- paste0(newick_path, "grouped_samples_lineage3.treefile")
+# l3_treefile <- paste0(newick_path, "lin_3_all_samps.treefile")
 itol_binary_template_file <- paste0(itol_templates_path, "itol.binary.txt")
 itol_outfile <- paste0(results_path, "itol_all_spol_binary.txt")
 
