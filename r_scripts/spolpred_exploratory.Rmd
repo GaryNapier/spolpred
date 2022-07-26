@@ -224,22 +224,52 @@ SpoligoMultiLv5Lineage4 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>4
 
 ```
 
+```{r spol-lineage-matching, echo = F, warning = F}
+
+# Show consistency with the lineage scheme. Things that would be good to report are
+# Number of spoligotypes per sublineage
+# Identify spoligotypes that cut across multiple sublineages (i.e. have poor resulution)
+# Identify sublineages that have multiple spoligotypes (i.e. better resolution using spoligotyping)
+
+```
+
 ```{r plots, echo = T, warning=F}
 
 
-rf_fit <- train(as.factor(old) ~ ., 
-                data = abalone_train, 
+# rf_fit <- train(as.factor(old) ~ ., 
+#                 data = abalone_train, 
+#                 method = "ranger")
+# 
+# library(caret)
+# 
+# rf_fit <- train(lin_level_1 ~ spoligotype, 
+#                 data = data, 
+#                 method = "ranger")
+# 
+# rf_fit
+# 
+# confusionMatrix(rf_fit, as.factor(data$spoligotype))
+# 
+
+dummy_file <- paste0(data_path, "dummy_data.csv")
+
+dummy <- read.csv(dummy_file)
+
+dummy
+
+rf_fit <- train(lineage ~ spol, 
+                data = dummy, 
                 method = "ranger")
 
-library(caret)
+rf_pred <- predict(rf_fit, dummy)
 
-rf_fit <- train(lin_level_1 ~ spoligotype, 
-                data = data, 
-                method = "ranger")
+caret::confusionMatrix(rf_pred, as.factor(dummy$lineage))
 
-rf_fit
 
-confusionMatrix(rf_fit, as.factor(data$spoligotype))
+
+
+
+
 
 ```
 
