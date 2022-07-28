@@ -102,8 +102,8 @@ itol_binary_template <- readChar(itol_binary_template_file, nchars = 1e6)
 
 # l3_samples <- l3_tree$tip.label
 
-# Remove blank lineages
-spoligo_lineage_full <- subset(spoligo_lineage_full, !(lineage == ""))
+# Blank lineages - all 1.2.2.1 apparently
+spoligo_lineage_full$lineage <- ifelse(spoligo_lineage_full$lineage == "", "1.2.2.1", spoligo_lineage_full$lineage)
 
 # Remove "lineage"
 spoligo_lineage_full$lineage <- gsub("lineage", "", spoligo_lineage_full$lineage)
@@ -130,18 +130,17 @@ data$max_lin <- ifelse(grepl("M", data$lineage), data$lineage, data$max_lin)
 # Remove 0000000000000000000000000000000000000000000 - error apparently
 data <- subset(data, !(spoligotype == "0000000000000000000000000000000000000000000"))
 
-# Remove everything except lin and spoligotype info
-# data <- dplyr::select(data, sample:lineage, lin_level_1:max_lin)
-
-# Keep only those with 5 or more samples per spoligo
-# data <- data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
-# nrow(data)
-
 # Add rownames for plotting
 rownames(data) <- data$sample
 
 # Add binary cols - convert binary spoligotype 00101 etc to columns - for both itol and ggtree
 spol_data <- get_binary_cols(data, "spoligotype", "s")
+
+
+# Clean up trees - only include samples which are in the spol dataset
+l3_tree <- keep.tip(intersect(data$sample, l3_tree$tip.label))
+l4_tree <- keep.tip(intersect(data$sample, l4_tree$tip.label))
+l1_7_tree <- keep.tip(intersect(data$sample, l1_7_tree$tip.label))
 
 # ggtree ----
 
@@ -159,9 +158,18 @@ spol_data_lv1_split <- split(spol_data, spol_data$lin_level_1)
 # Add 'lineage' for easier subsetting
 names(spol_data_lv1_split) <- paste0("lineage", names(spol_data_lv1_split))
 
-# Get colours fro each level 2 (4.1, 4.2 etc)
+# Get colours fro each level 2 (4.1, 4.2 etc) - lin 3 and 4 only
 l3_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage3$lin_level_2)
 l4_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage4$lin_level_2)
+
+
+# L1 & L7 
+
+# Need to get level 2 colours for L1 & L7 based on the top level colours
+
+
+
+
 
 # Set up ggtree parameters 
 width <- 0.05
@@ -240,6 +248,11 @@ l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
                         legend_title = "Lineage")+
   scale_fill_manual(values = lin_colours_lv_1, breaks = names(lin_colours_lv_1) )
 
+l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
+
+
+
+ggsave(plot = l1_7_ggtree, filename = paste0(results_path, "lin1_7_ggtree.svg"))
 
 # itol ----
 

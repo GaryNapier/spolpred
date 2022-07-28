@@ -95,18 +95,25 @@ data_path <- "../data/"
 #### Data file
 ```{r files, echo = T, warning=F, message=F}
 
-spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
+# spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
+# spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
+spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.correct_samps.csv")
 
 ```
 
 ```{r read-in-data, echo = T, warning=F, message=F}
 
-spoligo_lineage_full <- read.table(spoligo_lineage_full_file, header = T, sep = "\t", 
+# spoligo_lineage_full <- read.table(spoligo_lineage_full_file, header = T, sep = "\t", 
+#                                    colClasses = c("spoligotype" = "character"))
+spoligo_lineage_full <- read.csv(spoligo_lineage_full_file, header = T, 
                                    colClasses = c("spoligotype" = "character"))
 
 ```
 
 ```{r clean-data, echo = F, warning=F, message=F}
+
+# Blank lineages - all 1.2.2.1 apparently
+spoligo_lineage_full$lineage <- ifelse(spoligo_lineage_full$lineage == "", "1.2.2.1", spoligo_lineage_full$lineage)
 
 # Remove "lineage"
 spoligo_lineage_full$lineage <- gsub("lineage", "", spoligo_lineage_full$lineage)
@@ -115,20 +122,26 @@ spoligo_lineage_full$lineage <- gsub("lineage", "", spoligo_lineage_full$lineage
 animal <- subset(spoligo_lineage_full, grepl("M", lineage))
 spoligo_lineage_full <- subset(spoligo_lineage_full, !(grepl("M", lineage)))
 
-# Expand lineages and merge
-exp <- expand_hierarchy(spoligo_lineage_full, "sample", "lineage")
+# Expand lineages, rbind animal back in and merge
+# exp <- expand_hierarchy(spoligo_lineage_full, "sample", "lineage")
+exp <- expand_hierarchy_fill(spoligo_lineage_full, "sample", "lineage")
 data <- merge(rbind(spoligo_lineage_full, animal), exp,
-                              by.x = "sample", by.y = "id", all.x = T, 
-                              sort = F)
+              by.x = "sample", by.y = "id", all.x = T, 
+              sort = F)
 
+# Fill in cols lin_level_1 and max_lin for animal
 data$lin_level_1 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_1)
+data$lin_level_2 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_2)
+data$lin_level_3 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_3)
+data$lin_level_4 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_4)
+data$lin_level_5 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_5)
 data$max_lin <- ifelse(grepl("M", data$lineage), data$lineage, data$max_lin)
 
-# Remove 0000000000000000000000000000000000000000000 ? 
-data <- subset(data, !(spoligotype == "0000000000000000000000000000000000000000000"))
-
 # Remove everything except lin and spoligotype info
-data <- dplyr::select(data, sample:lineage, lin_level_1:max_lin)
+# data <- dplyr::select(data, sample:lineage, lin_level_1:max_lin)
+
+# Remove 0000000000000000000000000000000000000000000 - error apparently
+data <- subset(data, !(spoligotype == "0000000000000000000000000000000000000000000"))
 
 # Keep only those with 5 or more samples per spoligo
 data <- data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
@@ -252,26 +265,52 @@ SpoligoMultiLv5Lineage4 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>4
 # 
 
 dummy_file <- paste0(data_path, "dummy_data.csv")
-
 dummy <- read.csv(dummy_file)
 
-dummy
+# dummy
+# 
+# rf_fit <- train(lineage ~ spol, 
+#                 data = dummy, 
+#                 method = "ranger")
+# 
+# rf_pred <- predict(rf_fit, dummy)
+# 
+# caret::confusionMatrix(rf_pred, as.factor(dummy$lineage))
 
-rf_fit <- train(lineage ~ spol, 
-                data = dummy, 
-                method = "ranger")
-
-rf_pred <- predict(rf_fit, dummy)
-
-caret::confusionMatrix(rf_pred, as.factor(dummy$lineage))
+x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
+# x <- cbind(spol = row.names(x), x)
 
 
+apply(x, 1, sum)
 
+
+mat <- matrix(nrow = nrow(x), ncol = ncol(x))
+for(row in seq(nrow(x))){
+  for(col in seq(ncol(x[row, ]))){
+    
+    
+    mat[row, col] <- x[row, col]/sum(x[, col])
+    mat[row, col] <- (mat[row, col]/sum(x[row, ])) * mat[row, col]
+  
+  }
+}
+mat
 
 
 
 
 ```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
