@@ -70,11 +70,12 @@ expand_hierarchy <- function(df, group_by_col_name, hierarchy_to_expand_col_name
 top_spol_freq <- function(x, col){
   x %>% 
     group_by_(.dots = lazyeval::lazy(col)) %>% 
-    count(.dots = lazyeval::lazy(col), spoligotype) %>% 
-    arrange(desc(n), .by_group = TRUE) %>%
-    top_n(10, n) %>% 
+    dplyr::count(.dots = lazyeval::lazy(col), spoligotype) %>% 
+    dplyr::arrange(desc(n), .by_group = TRUE) %>%
+    dplyr::top_n(10, n) %>% 
     data.frame()
 }
+
 
 ```
 
@@ -202,38 +203,38 @@ table(top_spol_sub$spoligotype, top_spol_sub$lin_level_4)
 
 ```{r spol-counts, echo = F, warning = F}
 
-lv1Summary <- data %>% count(spoligotype, lin_level_1)
-lv2Summary <- data %>% count(spoligotype, lin_level_2)
-lv3Summary <- data %>% count(spoligotype, lin_level_3)
-lv4Summary <- data %>% count(spoligotype, lin_level_4)
-lv5Summary <- data %>% count(spoligotype, lin_level_5)
+lv1Summary <- data %>% dplyr::count(spoligotype, lin_level_1)
+lv2Summary <- data %>% dplyr::count(spoligotype, lin_level_2)
+lv3Summary <- data %>% dplyr::count(spoligotype, lin_level_3)
+lv4Summary <- data %>% dplyr::count(spoligotype, lin_level_4)
+lv5Summary <- data %>% dplyr::count(spoligotype, lin_level_5)
 
-SpoligoMultiLv1Lineage <- lv1Summary %>% group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv2Lineage <- lv2Summary %>% group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv3Lineage <- lv3Summary %>% group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv4Lineage <- lv4Summary %>% group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv5Lineage <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv1Lineage <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv2Lineage <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv3Lineage <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv4Lineage <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv5Lineage <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
 
 # in more than 2 lineages
-SpoligoMultiLv1Lineage2 <- lv1Summary %>% group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv2Lineage2 <- lv2Summary %>% group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv3Lineage2 <- lv3Summary %>% group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv4Lineage2 <- lv4Summary %>% group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv5Lineage2 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv1Lineage2 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv2Lineage2 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv3Lineage2 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv4Lineage2 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv5Lineage2 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
 
 # in more than 3 lineages
-SpoligoMultiLv1Lineage3 <- lv1Summary %>% group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv2Lineage3 <- lv2Summary %>% group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv3Lineage3 <- lv3Summary %>% group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv4Lineage3 <- lv4Summary %>% group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv5Lineage3 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv1Lineage3 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv2Lineage3 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv3Lineage3 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv4Lineage3 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv5Lineage3 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
 
 # in more than 4 lineages
-SpoligoMultiLv1Lineage4 <- lv1Summary %>% group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv2Lineage4 <- lv2Summary %>% group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv3Lineage4 <- lv3Summary %>% group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv4Lineage4 <- lv4Summary %>% group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv5Lineage4 <- lv5Summary %>% group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv1Lineage4 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv2Lineage4 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv3Lineage4 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv4Lineage4 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv5Lineage4 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
 
 ```
 
