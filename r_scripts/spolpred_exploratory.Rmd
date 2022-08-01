@@ -18,7 +18,7 @@ table_font_sz <- 8
 
 ```{r library, include=FALSE, echo = F, warning=F, message=F}
 
-library(sjmisc)
+# library(sjmisc)
 library(dplyr)
 library(tibble)
 library(stringr)
@@ -87,7 +87,7 @@ top_spol_freq <- function(x, col){
 
 ```{r paths, echo = F, warning=F, message=F}
 
-setwd("~/Documents/spolpred/r_scripts/")
+setwd("~/Documents/spolpred/r_scripts")
 
 data_path <- "../data/"
 
