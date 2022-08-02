@@ -254,41 +254,9 @@ SpoligoMultiLv5Lineage4 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filte
 ```{r plots, echo = T, warning=F}
 
 
-# rf_fit <- train(as.factor(old) ~ ., 
-#                 data = abalone_train, 
-#                 method = "ranger")
-# 
-# library(caret)
-# 
-# rf_fit <- train(lin_level_1 ~ spoligotype, 
-#                 data = data, 
-#                 method = "ranger")
-# 
-# rf_fit
-# 
-# confusionMatrix(rf_fit, as.factor(data$spoligotype))
-# 
-
-dummy_file <- paste0(data_path, "dummy_data.csv")
-dummy <- read.csv(dummy_file)
-
-# dummy
-# 
-# rf_fit <- train(lineage ~ spol, 
-#                 data = dummy, 
-#                 method = "ranger")
-# 
-# rf_pred <- predict(rf_fit, dummy)
-# 
-# caret::confusionMatrix(rf_pred, as.factor(dummy$lineage))
 
 
-
-x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
-# x <- cbind(spol = row.names(x), x)
-
-
-
+# x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
 
 non_num_cols <- function(x){
   # Returns only the non-numeric columns of a dataframe
@@ -304,7 +272,6 @@ L3 <- c(20000, 100000 - 20000)
 # L1 <- c(90, 10)
 # L2 <- c(10, 90)
 # L3 <- c(20, 80)
-
 
 x <- data.frame(fruit = fruit, L1 = L1, L2 = L2, L3 = L3)
 
@@ -367,71 +334,37 @@ col_probs <- function(x){
   cbind(x_non_num, setNames(data.frame(mat), names(x)))
 }
 
-
-
-# fruit   L1 L2 L3
-# mangoes 90 10 20
-# bananas 10 90 80
-
-# row_probs(x)
-# fruit     L1     L2    L3
-# mangoes 0.7500 0.0833 0.167
-# bananas 0.0556 0.5000 0.444
-
-
-# fruit L1  L2    L3
-# mangoes 90 100 20000
-# bananas 10 900 80000
-
-# fruit       L1      L2    L3
-# mangoes 0.004458 0.00495 0.991
-# bananas 0.000124 0.01112 0.989
-
-# table(dummy)
-# prop.table(table(dummy))
-# row_probs(as.data.frame.matrix(table(dummy)))
-# 
-# prop.table(num_cols(x))
-# 
-# col_sums <- colSums(num_cols(x))
-# 
-# t(apply(row_probs(num_cols(x)), 1, function(x){x/col_sums}))
-
-# x_num <- num_cols(x)
-# 
-# col_wise <- col_probs(x_num)
-# 
-# rowsums_colwise <- rowSums(col_wise)
-# 
-# mat <- matrix(nrow = nrow(x_num), ncol = ncol(x_num))
-# for(row in seq(nrow(x_num))){
-#   for(col in seq(ncol(x_num[row, ])))
-#     mat[row, col] <- x_num[row,col]/rowsums_colwise[row]
-# }
-# mat
-
 x_num
 
 col_probs(x_num)
 
 row_probs(col_probs(x_num))
 
+
+# Dummy
+dummy_file <- paste0(data_path, "dummy_data.csv")
+dummy <- read.csv(dummy_file)
+
 dummy_freqs <- as.data.frame.matrix(table(dummy))
 
+##### ANSWER?? #####
 row_probs(col_probs(dummy_freqs))
+##### ANSWER?? #####
 
+# Add more data so bootstrap sampling works better
+dummy <- rbind(dummy, dummy, dummy)
 
-# Add some more data to L1
+# Add disproportionately more bananas to L1
 dummy_bananas <- rbind(data.frame(spol = rep("bananas", 1000), lineage = rep("L1", 1000)), dummy)
 # Balance out L2 and L3 a bit (only ~10 samples in L2 and L3)
-L2 <- subset(dummy_bananas, lineage == "L2")
-L3 <- subset(dummy_bananas, lineage == "L3")
 
-L2 <- data.frame(spol = rep(L2$spol, 10), lineage = rep(L2$lineage, 10))
-L3 <- data.frame(spol = rep(L3$spol, 10), lineage = rep(L3$lineage, 10))
+# L2 <- subset(dummy_bananas, lineage == "L2")
+# L3 <- subset(dummy_bananas, lineage == "L3")
+# 
+# L2 <- data.frame(spol = rep(L2$spol, 10), lineage = rep(L2$lineage, 10))
+# L3 <- data.frame(spol = rep(L3$spol, 10), lineage = rep(L3$lineage, 10))
 
-dummy_bananas <- rbind(dummy_bananas, L2, L3)
-
+# dummy_bananas <- rbind(dummy_bananas, L2, L3)
 
 dummy_bananas_freqs <- as.data.frame.matrix(table(dummy_bananas))
 
@@ -440,7 +373,6 @@ row_probs(dummy_bananas_freqs)
 col_probs(dummy_bananas_freqs)
 
 row_probs(col_probs(dummy_bananas_freqs))
-
 
 # Compare to bootstrapping
 dummy_bananas_split <- split(dummy_bananas, dummy_bananas$lineage)
