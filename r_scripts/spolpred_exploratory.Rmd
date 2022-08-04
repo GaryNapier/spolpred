@@ -253,9 +253,6 @@ SpoligoMultiLv5Lineage4 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filte
 
 ```{r plots, echo = T, warning=F}
 
-
-
-
 # x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
 
 non_num_cols <- function(x){
@@ -334,7 +331,7 @@ col_probs <- function(x){
   cbind(x_non_num, setNames(data.frame(mat), names(x)))
 }
 
-x_num
+x_num <- num_cols(x)
 
 col_probs(x_num)
 
@@ -377,7 +374,7 @@ row_probs(col_probs(dummy_bananas_freqs))
 # Compare to bootstrapping
 dummy_bananas_split <- split(dummy_bananas, dummy_bananas$lineage)
 min_samp_sz <- min(unlist(lapply(dummy_bananas_split, function(x){nrow(x)})))
-n_samps <- round_any(floor(min_samp_sz*0.8), 10)
+n_samps <- plyr::round_any(floor(min_samp_sz*0.8), 10)
 
 n_loops <- 100
 
@@ -393,6 +390,32 @@ bs_df <- do.call("rbind", bs_list)
 tab2df(bs_df)
 
 row_probs(tab2df(bs_df))
+
+
+# Try the above on the real data
+
+# Add "lineage" back into lineages
+samp_spol <- dplyr::select(data, sample, spoligotype)
+non_samp_spol <- dplyr::select(data, -sample, -spoligotype)
+non_samp_spol <- data.frame(apply(non_samp_spol, 2, function(x){
+  paste0("lineage", x)
+  }))
+data <- cbind(samp_spol, non_samp_spol)
+
+# Make a freq table
+lv1_tab <- tab2df(select(data, spoligotype, lin_level_1))
+
+spol <- row.names(lv1_prob)
+col_nms <- colnames(lv1_prob)
+
+for(col in seq(ncol(lv1_prob))){
+  sub <- subset(lv1_prob[col], lv1_prob[col] > 0)
+  df <- data.frame(spol = row.names(sub), sub)
+  print(df)
+}
+
+
+
 
 
 
