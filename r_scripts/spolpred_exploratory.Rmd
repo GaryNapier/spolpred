@@ -81,197 +81,6 @@ tab2df <- function(df){
   as.data.frame.matrix(table(df))
 }
 
-```
-
-
-```{r variables, echo = F, warning=F, message=F}
-
-
-```
-
-```{r paths, echo = F, warning=F, message=F}
-
-setwd("~/Documents/spolpred/r_scripts")
-
-data_path <- "../data/"
-
-```
-
-#### Data file
-```{r files, echo = T, warning=F, message=F}
-
-# spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
-# spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
-spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.correct_samps.csv")
-
-```
-
-```{r read-in-data, echo = T, warning=F, message=F}
-
-# spoligo_lineage_full <- read.table(spoligo_lineage_full_file, header = T, sep = "\t", 
-#                                    colClasses = c("spoligotype" = "character"))
-spoligo_lineage_full <- read.csv(spoligo_lineage_full_file, header = T, 
-                                   colClasses = c("spoligotype" = "character"))
-
-```
-
-```{r clean-data, echo = F, warning=F, message=F}
-
-# Blank lineages - all 1.2.2.1 apparently
-spoligo_lineage_full$lineage <- ifelse(spoligo_lineage_full$lineage == "", "1.2.2.1", spoligo_lineage_full$lineage)
-
-# Remove "lineage"
-spoligo_lineage_full$lineage <- gsub("lineage", "", spoligo_lineage_full$lineage)
-
-# Remove and store animal strains
-animal <- subset(spoligo_lineage_full, grepl("M", lineage))
-spoligo_lineage_full <- subset(spoligo_lineage_full, !(grepl("M", lineage)))
-
-# Expand lineages, rbind animal back in and merge
-# exp <- expand_hierarchy(spoligo_lineage_full, "sample", "lineage")
-exp <- expand_hierarchy_fill(spoligo_lineage_full, "sample", "lineage")
-data <- merge(rbind(spoligo_lineage_full, animal), exp,
-              by.x = "sample", by.y = "id", all.x = T, 
-              sort = F)
-
-# Fill in cols lin_level_1 and max_lin for animal
-data$lin_level_1 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_1)
-data$lin_level_2 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_2)
-data$lin_level_3 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_3)
-data$lin_level_4 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_4)
-data$lin_level_5 <- ifelse(grepl("M", data$lineage), data$lineage, data$lin_level_5)
-data$max_lin <- ifelse(grepl("M", data$lineage), data$lineage, data$max_lin)
-
-# Remove everything except lin and spoligotype info
-# data <- dplyr::select(data, sample:lineage, lin_level_1:max_lin)
-
-# Remove 0000000000000000000000000000000000000000000 - error apparently
-data <- subset(data, !(spoligotype == "0000000000000000000000000000000000000000000"))
-
-# Keep only those with 5 or more samples per spoligo
-data <- data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
-
-```
-
-### Basic stats
-
-```{r basic-stats, echo = T, warning=F}
-
-head(data)
-nrow(data)
-length(unique(data$spoligotype))
-length(unique(data$lineage))
-
-```
-
-Lineage frequencies
-
-```{r n-spol-lin, echo = T, warning=F}
-
-table(data$lineage) %>% as.data.frame() %>% arrange(Var1)
-table(data$lin_level_1) %>% as.data.frame() %>% arrange(Var1)
-table(data$lin_level_2) %>% as.data.frame() %>% arrange(Var1)
-table(data$lin_level_3) %>% as.data.frame() %>% arrange(Var1)
-table(data$lin_level_4) %>% as.data.frame() %>% arrange(Var1)
-table(data$lin_level_5) %>% as.data.frame() %>% arrange(Var1)
-
-```
-
-Top ten spoligotypes per lineage, per level
-
-```{r top-spol-lin, echo = T, warning=F}
-
-top_spol_freq(data, lin_level_1)
-top_spol_freq(data, lin_level_2)
-top_spol_freq(data, lin_level_3)
-top_spol_freq(data, lin_level_4)
-
-```
-
-Top ten most frequent spoligotypes and their lineages (per level)
-
-```{r top-ten-spol-tables, echo = T, warning=F}
-
-top_spol <- table(data$spoligotype) %>% as.data.frame() %>% arrange(desc(Freq)) %>% top_n(10, Freq)
-top_spol_sub <- subset(data, spoligotype %in% top_spol$Var1)
-
-table(top_spol_sub$spoligotype, top_spol_sub$lineage)
-table(top_spol_sub$spoligotype, top_spol_sub$lin_level_1)
-table(top_spol_sub$spoligotype, top_spol_sub$lin_level_2)
-table(top_spol_sub$spoligotype, top_spol_sub$lin_level_3)
-table(top_spol_sub$spoligotype, top_spol_sub$lin_level_4)
-
-```
-
-### Count how many spoligotypes are in more than 1 lineage etc
-
-```{r spol-counts, echo = F, warning = F}
-
-lv1Summary <- data %>% dplyr::count(spoligotype, lin_level_1)
-lv2Summary <- data %>% dplyr::count(spoligotype, lin_level_2)
-lv3Summary <- data %>% dplyr::count(spoligotype, lin_level_3)
-lv4Summary <- data %>% dplyr::count(spoligotype, lin_level_4)
-lv5Summary <- data %>% dplyr::count(spoligotype, lin_level_5)
-
-SpoligoMultiLv1Lineage <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv2Lineage <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv3Lineage <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv4Lineage <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
-SpoligoMultiLv5Lineage <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
-
-# in more than 2 lineages
-SpoligoMultiLv1Lineage2 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv2Lineage2 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv3Lineage2 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv4Lineage2 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
-SpoligoMultiLv5Lineage2 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
-
-# in more than 3 lineages
-SpoligoMultiLv1Lineage3 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv2Lineage3 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv3Lineage3 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv4Lineage3 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
-SpoligoMultiLv5Lineage3 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
-
-# in more than 4 lineages
-SpoligoMultiLv1Lineage4 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv2Lineage4 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv3Lineage4 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv4Lineage4 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
-SpoligoMultiLv5Lineage4 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
-
-```
-
-```{r spol-lineage-matching, echo = F, warning = F}
-
-# Show consistency with the lineage scheme. Things that would be good to report are
-# Number of spoligotypes per sublineage
-# Identify spoligotypes that cut across multiple sublineages (i.e. have poor resulution)
-# Identify sublineages that have multiple spoligotypes (i.e. better resolution using spoligotyping)
-
-```
-
-```{r plots, echo = T, warning=F}
-
-# x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
-
-non_num_cols <- function(x){
-  # Returns only the non-numeric columns of a dataframe
-  x[!(sapply(x, is.numeric))]
-}
-
-fruit <- c("mangoes", "bananas")
-L1 <- c(90, 100 - 90)
-L2 <- c(100, 1000 - 100)
-L3 <- c(20000, 100000 - 20000)
-
-# fruit <- c("mangoes", "bananas")
-# L1 <- c(90, 10)
-# L2 <- c(10, 90)
-# L3 <- c(20, 80)
-
-x <- data.frame(fruit = fruit, L1 = L1, L2 = L2, L3 = L3)
-
 row_probs <- function(x){
   # Dataframe:
   # fruit   X1 X2 X3
@@ -331,12 +140,218 @@ col_probs <- function(x){
   cbind(x_non_num, setNames(data.frame(mat), names(x)))
 }
 
+sort_df_by_col_name <- function(df, col, decreasing = T){
+  df[order(df[, col],  decreasing = decreasing),]
+}
+
+```
+
+
+```{r variables, echo = F, warning=F, message=F}
+
+
+```
+
+```{r paths, echo = F, warning=F, message=F}
+
+setwd("~/Documents/spolpred/r_scripts")
+
+data_path <- "../data/"
+
+```
+
+#### Data file
+```{r files, echo = T, warning=F, message=F}
+
+spol_data_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
+
+file.exists(spol_data_file)
+
+```
+
+```{r read-in-data, echo = T, warning=F, message=F}
+
+# spol_data <- read.table(spol_data_file, header = T, sep = "\t", 
+#                                    colClasses = c("spoligotype" = "character"))
+spol_data <- read.csv(spol_data_file, header = T, 
+                                   colClasses = c("spoligotype" = "character"))
+
+```
+
+```{r clean-data, echo = F, warning=F, message=F}
+
+# Blank lineages - all 1.2.2.1 apparently
+spol_data$lineage <- ifelse(spol_data$lineage == "", "lineage1.2.2.1", spol_data$lineage)
+# Remove 0000000000000000000000000000000000000000000 - error apparently
+spol_data <- subset(spol_data, !(spoligotype == "0000000000000000000000000000000000000000000"))
+
+# Separate out all the metadata into lookup tables and data tables
+lin_spol_sit_fam <- odr(unique(select(spol_data, lineage, spoligotype, SIT, family)))
+sit_fam_spol <- odr(unique(select(spol_data, SIT, family, spoligotype)))
+sit_fam <- odr(unique(select(spol_data, SIT, family)))
+
+# Separate out the data for just correlating lineage and spol
+
+# Remove "lineage" so that the levels can be split out
+spol_data$lineage <- gsub("lineage", "", spol_data$lineage)
+
+# Just retain sample, lin and spol cols 
+spol_data <- select(spol_data, sample, lineage, spoligotype)
+
+# Remove and store animal strains - need to process separately
+# Or only analyse non-animal?
+# animal <- subset(spol_data, grepl("La", lineage))
+spol_data <- subset(spol_data, !(grepl("La", lineage)))
+
+# Expand lineages, rbind animal back in and merge
+exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
+# data <- merge(rbind(spol_data, animal), exp,
+#               by.x = "sample", by.y = "id", all.x = T, 
+#               sort = F)
+spol_data <- merge(spol_data, exp,
+                   by.x = "sample", by.y = "id", all.x = T, 
+                   sort = F)
+
+# Fill in cols lin_level_1 and max_lin for animal
+# spol_data$lin_level_1 <- ifelse(grepl("M", spol_data$lineage), spol_data$lineage, spol_data$lin_level_1)
+# spol_data$lin_level_2 <- ifelse(grepl("M", spol_data$lineage), spol_data$lineage, spol_data$lin_level_2)
+# spol_data$lin_level_3 <- ifelse(grepl("M", spol_data$lineage), spol_data$lineage, spol_data$lin_level_3)
+# spol_data$lin_level_4 <- ifelse(grepl("M", spol_data$lineage), spol_data$lineage, spol_data$lin_level_4)
+# spol_data$lin_level_5 <- ifelse(grepl("M", spol_data$lineage), spol_data$lineage, spol_data$lin_level_5)
+# spol_data$max_lin <- ifelse(grepl("M", spol_data$lineage), spol_data$lineage, spol_data$max_lin)
+
+# Remove everything except lin and spoligotype info
+# data <- dplyr::select(data, sample:lineage, lin_level_1:max_lin)
+
+# Keep only those with 5 or more samples per spoligo
+spol_data <- spol_data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
+
+```
+
+### Basic stats
+
+```{r basic-stats, echo = T, warning=F}
+
+head(spol_data)
+nrow(spol_data)
+length(unique(spol_data$spoligotype))
+length(unique(spol_data$lineage))
+
+```
+
+Lineage frequencies
+
+```{r n-spol-lin, echo = T, warning=F}
+
+table(spol_data$lineage) %>% as.data.frame() %>% arrange(Var1)
+table(spol_data$lin_level_1) %>% as.data.frame() %>% arrange(Var1)
+table(spol_data$lin_level_2) %>% as.data.frame() %>% arrange(Var1)
+table(spol_data$lin_level_3) %>% as.data.frame() %>% arrange(Var1)
+table(spol_data$lin_level_4) %>% as.data.frame() %>% arrange(Var1)
+table(spol_data$lin_level_5) %>% as.data.frame() %>% arrange(Var1)
+
+```
+
+Top ten spoligotypes per lineage, per level
+
+```{r top-spol-lin, echo = T, warning=F}
+
+top_spol_freq(spol_data, lin_level_1)
+top_spol_freq(spol_data, lin_level_2)
+top_spol_freq(spol_data, lin_level_3)
+top_spol_freq(spol_data, lin_level_4)
+
+```
+
+Top ten most frequent spoligotypes and their lineages (per level)
+
+```{r top-ten-spol-tables, echo = T, warning=F}
+
+top_spol <- table(spol_data$spoligotype) %>% as.data.frame() %>% arrange(desc(Freq)) %>% top_n(10, Freq)
+top_spol_sub <- subset(spol_data, spoligotype %in% top_spol$Var1)
+
+table(top_spol_sub$spoligotype, top_spol_sub$lineage)
+table(top_spol_sub$spoligotype, top_spol_sub$lin_level_1)
+table(top_spol_sub$spoligotype, top_spol_sub$lin_level_2)
+table(top_spol_sub$spoligotype, top_spol_sub$lin_level_3)
+table(top_spol_sub$spoligotype, top_spol_sub$lin_level_4)
+
+```
+
+### Count how many spoligotypes are in more than 1 lineage etc
+
+```{r spol-counts, echo = F, warning = F}
+
+lv1Summary <- spol_data %>% dplyr::count(spoligotype, lin_level_1)
+lv2Summary <- spol_data %>% dplyr::count(spoligotype, lin_level_2)
+lv3Summary <- spol_data %>% dplyr::count(spoligotype, lin_level_3)
+lv4Summary <- spol_data %>% dplyr::count(spoligotype, lin_level_4)
+lv5Summary <- spol_data %>% dplyr::count(spoligotype, lin_level_5)
+
+SpoligoMultiLv1Lineage <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv2Lineage <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv3Lineage <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv4Lineage <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+SpoligoMultiLv5Lineage <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>1)
+
+# in more than 2 lineages
+SpoligoMultiLv1Lineage2 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv2Lineage2 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv3Lineage2 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv4Lineage2 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+SpoligoMultiLv5Lineage2 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>2)
+
+# in more than 3 lineages
+SpoligoMultiLv1Lineage3 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv2Lineage3 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv3Lineage3 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv4Lineage3 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+SpoligoMultiLv5Lineage3 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>3)
+
+# in more than 4 lineages
+SpoligoMultiLv1Lineage4 <- lv1Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv2Lineage4 <- lv2Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv3Lineage4 <- lv3Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv4Lineage4 <- lv4Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+SpoligoMultiLv5Lineage4 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filter(n()>4)
+
+```
+
+```{r spol-lineage-matching, echo = F, warning = F}
+
+# Show consistency with the lineage scheme. Things that would be good to report are
+# Number of spoligotypes per sublineage
+# Identify spoligotypes that cut across multiple sublineages (i.e. have poor resulution)
+# Identify sublineages that have multiple spoligotypes (i.e. better resolution using spoligotyping)
+
+```
+
+```{r dummy-predictions, echo = F, warning=F}
+
+# x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
+
+non_num_cols <- function(x){
+  # Returns only the non-numeric columns of a dataframe
+  x[!(sapply(x, is.numeric))]
+}
+
+fruit <- c("mangoes", "bananas")
+L1 <- c(90, 100 - 90)
+L2 <- c(100, 1000 - 100)
+L3 <- c(20000, 100000 - 20000)
+
+# fruit <- c("mangoes", "bananas")
+# L1 <- c(90, 10)
+# L2 <- c(10, 90)
+# L3 <- c(20, 80)
+
+x <- data.frame(fruit = fruit, L1 = L1, L2 = L2, L3 = L3)
+
 x_num <- num_cols(x)
 
 col_probs(x_num)
 
 row_probs(col_probs(x_num))
-
 
 # Dummy
 dummy_file <- paste0(data_path, "dummy_data.csv")
@@ -365,9 +380,7 @@ dummy_bananas <- rbind(data.frame(spol = rep("bananas", 1000), lineage = rep("L1
 
 dummy_bananas_freqs <- as.data.frame.matrix(table(dummy_bananas))
 
-row_probs(dummy_bananas_freqs)
-
-col_probs(dummy_bananas_freqs)
+dummy_bananas_freqs
 
 row_probs(col_probs(dummy_bananas_freqs))
 
@@ -391,32 +404,58 @@ tab2df(bs_df)
 
 row_probs(tab2df(bs_df))
 
+```
+
+```{r spol-predictions, echo = T, warning=F}
 
 # Try the above on the real data
 
 # Add "lineage" back into lineages
-samp_spol <- dplyr::select(data, sample, spoligotype)
-non_samp_spol <- dplyr::select(data, -sample, -spoligotype)
+samp_spol <- dplyr::select(spol_data, sample, spoligotype)
+non_samp_spol <- dplyr::select(spol_data, -sample, -spoligotype)
 non_samp_spol <- data.frame(apply(non_samp_spol, 2, function(x){
   paste0("lineage", x)
   }))
-data <- cbind(samp_spol, non_samp_spol)
+spol_data <- cbind(samp_spol, non_samp_spol)
+
+head(spol_data)
 
 # Make a freq table
-lv1_tab <- tab2df(select(data, spoligotype, lin_level_1))
+lv1_tab <- tab2df(select(spol_data, spoligotype, lin_level_1))
 
+# Calc probs
+lv1_prob <- row_probs(col_probs(lv1_tab))
+
+heaD(lv1_tab)
+head(lv1_prob)
+
+# Save the spoligotype
 spol <- row.names(lv1_prob)
+# Save the colnames before adding spoligotype
 col_nms <- colnames(lv1_prob)
+lv1_tab$spol <- row.names(lv1_tab)
+lv1_prob$spol <- row.names(lv1_prob)
 
-for(col in seq(ncol(lv1_prob))){
-  sub <- subset(lv1_prob[col], lv1_prob[col] > 0)
-  df <- data.frame(spol = row.names(sub), sub)
-  print(df)
+# Pull out the non-zeros for each lineage
+lv1_list <- list()
+for(col in col_nms){
+  
+  df <- lv1_prob[, c("spol", col)]
+  df <- df[which(df[, col] > 0), ]
+  lv1_list[[col]] <- sort_df_by_col_name(df, col)
+  
 }
 
+# Merge in sample numbers
 
+head(lv1_tab)
 
-
+for(lin in names(lv1_list)){
+  # print(lv1_list[[lin]])
+  print(merge(lv1_list[[lin]], lv1_tab[, c("spol", lin)], 
+        by = "spol", 
+        sort = F))
+}
 
 
 ```

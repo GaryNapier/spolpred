@@ -76,7 +76,7 @@ itol_templates_path <- "../pipeline/itol_templates/"
 # Files ----
 
 # spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
-spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.correct_samps.csv")
+spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
 l3_treefile <- paste0(newick_path, "grouped_samples_lineage3.treefile")
 l4_treefile <- paste0(newick_path, "grouped_samples_lineage4.treefile")
 l1_7_treefile <- paste0(newick_path, "grouped_samples_L_1_7.treefile")
