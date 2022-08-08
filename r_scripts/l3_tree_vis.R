@@ -169,6 +169,7 @@ l4_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage4$lin_level_2)
 
 
 
+do_tree <- "1_7"
 
 
 # Set up ggtree parameters 
@@ -180,79 +181,90 @@ os <- 0.0010
 
 # L3
 
-l3_ggtree <- ggtree(l3_tree, size = line_sz, layout = "circular")
-l3_ggtree <- gheatmap(l3_ggtree, lin_lv2_data_ggplot,
-                      color = NA, 
-                      width = width,
-                      offset = 0,
-                      colnames = F)+
-  scale_fill_manual(values = l3_lv2_cols, breaks = names(l3_lv2_cols) )+
-  labs(fill = "Subineage")
+  if(do_tree == "3"){
+  l3_ggtree <- ggtree(l3_tree, size = line_sz, layout = "circular")
+  l3_ggtree <- gheatmap(l3_ggtree, lin_lv2_data_ggplot,
+                        color = NA, 
+                        width = width,
+                        offset = 0,
+                        colnames = F)+
+    scale_fill_manual(values = l3_lv2_cols, breaks = names(l3_lv2_cols) )+
+    labs(fill = "Subineage")
+  
+  l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
+  
+  l3_ggtree <- gheatmap(l3_ggtree, spol_data_ggplot,
+           offset = os+0.0020,
+           color = NA,
+           low="white",
+           high="black",
+           colnames = F) +
+    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+    labs(fill = "Spoligotype")+
+    ggtitle("Lineage 3")
+  
+  # ggsave(file = paste0(results_path, "lin3_ggtree.png"), plot = l3_ggtree)
+  # ggsave(file = paste0(results_path, "lin3_ggtree.svg"), plot = l3_ggtree)
 
-l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
+}else if(do_tree == "4"){
 
-l3_ggtree <- gheatmap(l3_ggtree, spol_data_ggplot,
-         offset = os+0.0020,
-         color = NA,
-         low="white",
-         high="black",
-         colnames = F) +
-  scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-  labs(fill = "Spoligotype")+
-  ggtitle("Lineage 3")
-
-ggsave(file = paste0(results_path, "lin3_ggtree.png"), plot = l3_ggtree)
-ggsave(file = paste0(results_path, "lin3_ggtree.svg"), plot = l3_ggtree)
-
-
-# L4
-
-# Subset L4, still too big
-set.seed(123)
-l4_tree <- keep.tip(l4_tree, sample(l4_tree$tip.label, floor(length(l4_tree$tip.label)*0.5)))
-
-l4_ggtree <- ggtree(l4_tree, size = line_sz, layout = "circular")
-l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot,
-                      color = NA,
-                      width = 0.2,
-                      offset = 0,
-                      colnames = F)+
-  scale_fill_manual(values = l4_lv2_cols, breaks = names(l4_lv2_cols) )+
-  labs(fill = "Subineage")
-
-l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
-
-l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot,
-                      offset = os+0.0020,
-                      color = NA,
-                      low="white",
-                      high="black",
-                      colnames = F) +
-  scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-  labs(fill = "Spoligotype")+
-  ggtitle("Lineage 4")
-
-ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree)
-ggsave(file = paste0(results_path, "lin4_ggtree.svg"), plot = l4_ggtree)
-
-
-# L1 & L7
-
-l1_7_ggtree <- ggtree(l1_7_tree, size = line_sz, layout = "circular")
-
-l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
+  # L4
+  
+  # Subset L4, still too big
+  set.seed(123)
+  l4_tree <- keep.tip(l4_tree, sample(l4_tree$tip.label, floor(length(l4_tree$tip.label)*0.5)))
+  
+  l4_ggtree <- ggtree(l4_tree, size = line_sz, layout = "circular")
+  l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot,
                         color = NA,
                         width = 0.2,
                         offset = 0,
-                        colnames = F, 
-                        legend_title = "Lineage")+
-  scale_fill_manual(values = lin_colours_lv_1, breaks = names(lin_colours_lv_1) )
+                        colnames = F)+
+    scale_fill_manual(values = l4_lv2_cols, breaks = names(l4_lv2_cols) )+
+    labs(fill = "Subineage")
+  
+  l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
+  
+  l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot,
+                        offset = os+0.0020,
+                        color = NA,
+                        low="white",
+                        high="black",
+                        colnames = F) +
+    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+    labs(fill = "Spoligotype")+
+    ggtitle("Lineage 4")
+  
+  # ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree)
+  # ggsave(file = paste0(results_path, "lin4_ggtree.svg"), plot = l4_ggtree)
 
-l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
+}else if(do_tree == "1_7"){
+
+# L1 & L7
+
+  l1_7_ggtree <- ggtree(l1_7_tree, size = line_sz, layout = "circular")
+  
+  l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
+                          color = NA,
+                          width = 0.2,
+                          offset = 0,
+                          colnames = F, 
+                          legend_title = "Lineage")+
+    scale_fill_manual(values = lin_colours_lv_1, breaks = names(lin_colours_lv_1) )
+  
+  l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
+  
+  # ggsave(plot = l1_7_ggtree, filename = paste0(results_path, "lin1_7_ggtree.svg"))
+
+}
 
 
 
-ggsave(plot = l1_7_ggtree, filename = paste0(results_path, "lin1_7_ggtree.svg"))
+
+
+
+
+
 
 # itol ----
 

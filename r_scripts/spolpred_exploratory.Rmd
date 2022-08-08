@@ -29,6 +29,11 @@ library(stringr)
 
 source("https://raw.githubusercontent.com/GaryNapier/Packages_functions/master/Functions.R")
 
+non_num_cols <- function(x){
+  # Returns only the non-numeric columns of a dataframe
+  x[!(sapply(x, is.numeric))]
+}
+
 expand_hierarchy <- function(df, group_by_col_name, hierarchy_to_expand_col_name){
   # Takes df like this:
   #   ID      Group
@@ -330,11 +335,6 @@ SpoligoMultiLv5Lineage4 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filte
 
 # x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
 
-non_num_cols <- function(x){
-  # Returns only the non-numeric columns of a dataframe
-  x[!(sapply(x, is.numeric))]
-}
-
 fruit <- c("mangoes", "bananas")
 L1 <- c(90, 100 - 90)
 L2 <- c(100, 1000 - 100)
@@ -410,13 +410,13 @@ row_probs(tab2df(bs_df))
 
 # Try the above on the real data
 
-# Add "lineage" back into lineages
+# Add "lineage" back into lineages for ease of col names/list names
 samp_spol <- dplyr::select(spol_data, sample, spoligotype)
 non_samp_spol <- dplyr::select(spol_data, -sample, -spoligotype)
-non_samp_spol <- data.frame(apply(non_samp_spol, 2, function(x){
+non_samp_spol_add_lin <- data.frame(apply(non_samp_spol, 2, function(x){
   paste0("lineage", x)
   }))
-spol_data <- cbind(samp_spol, non_samp_spol)
+spol_data <- cbind(samp_spol, non_samp_spol_add_lin)
 
 head(spol_data)
 
@@ -424,10 +424,12 @@ head(spol_data)
 lv1_tab <- tab2df(select(spol_data, spoligotype, lin_level_1))
 
 # Calc probs
+lv1_col_prob <- col_probs(lv1_tab)
 lv1_prob <- row_probs(col_probs(lv1_tab))
 
 heaD(lv1_tab)
 head(lv1_prob)
+head(lv1_col_prob)
 
 # Save the spoligotype
 spol <- row.names(lv1_prob)
@@ -435,28 +437,48 @@ spol <- row.names(lv1_prob)
 col_nms <- colnames(lv1_prob)
 lv1_tab$spol <- row.names(lv1_tab)
 lv1_prob$spol <- row.names(lv1_prob)
+lv1_col_prob$spol <- row.names(lv1_col_prob)
 
-# Pull out the non-zeros for each lineage
+# Pull out the non-zeros for each lineage and store each lineage (col) as a separate list entry
 lv1_list <- list()
 for(col in col_nms){
-  
   df <- lv1_prob[, c("spol", col)]
   df <- df[which(df[, col] > 0), ]
   lv1_list[[col]] <- sort_df_by_col_name(df, col)
+}
+
+# Merge in sample numbers (freqs) and col probs (freqs as proportion)
+
+head(lv1_tab)
+head(lv1_prob)
+
+for(lin in names(lv1_list)){
+  
+  # Merge in the freqs
+  lv1_list[[lin]] <- setNames(merge(lv1_list[[lin]], lv1_tab[, c("spol", lin)], 
+        by = "spol", 
+        sort = F), 
+        c("spol", lin, "freq"))
+  
+  # Merge in the freq as a proportion of the total n samps per lin
+  lv1_list[[lin]] <- setNames(merge(lv1_list[[lin]], lv1_col_prob[, c("spol", lin)],
+      by = "spol",
+      sort = F), 
+      c("spol", "prob", "freq", "col_prob"))
+
+  # names(lv1_list[[lin]]) <- c("spol", "prob", "freq")
+  
+  # Sort
+  lv1_list[[lin]] <- dplyr::arrange(lv1_list[[lin]], desc(prob), desc(freq))
+  
+  # Get the top 5 sample proportions
+  top_col_prob <- sort(lv1_list[[lin]]$col_prob, decreasing = T)
+  top_col_prob <- top_col_prob[1:5]
+  lv1_list[[lin]] <- lv1_list[[lin]][which(lv1_list[[lin]]$col_prob %in% top_col_prob), ]
   
 }
 
-# Merge in sample numbers
-
-head(lv1_tab)
-
-for(lin in names(lv1_list)){
-  # print(lv1_list[[lin]])
-  print(merge(lv1_list[[lin]], lv1_tab[, c("spol", lin)], 
-        by = "spol", 
-        sort = F))
-}
-
+lv1_list
 
 ```
 
