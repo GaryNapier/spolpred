@@ -245,7 +245,7 @@ os <- 0.0010
   l1_7_ggtree <- ggtree(l1_7_tree, size = line_sz, layout = "circular")
   
   l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
-                          color = NA,
+                          # color = NA,
                           width = 0.2,
                           offset = 0,
                           colnames = F, 
