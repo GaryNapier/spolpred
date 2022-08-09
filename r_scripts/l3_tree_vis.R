@@ -9,6 +9,8 @@ library(phytools)
 library(ggplot2)
 library(ggtree)
 library(dplyr)
+library(colorspace)
+library(scales)
 
 # Functions ----
 
@@ -65,6 +67,20 @@ ggtree_strip_cols <- function(x, alpha = 0.7){
   names(cols) <- c(sort(unique(x)))
   cols
 }
+
+dark_to_light <- function(lin_names, first_col){
+  if(length(lin_names) == 1){
+    return(first_col)
+  }else{
+    lighten_to_col <- lighten(first_col, 1-(1/(length(lin_names))))
+    fc <- colorRampPalette(c(first_col, lighten_to_col))
+    lin_all_cols <- fc(length(lin_names))
+    scales::show_col(lin_all_cols)
+    names(lin_all_cols) <- lin_names
+    return(lin_all_cols)
+  }
+}
+
 
 # Paths ----
 
@@ -136,11 +152,10 @@ rownames(data) <- data$sample
 # Add binary cols - convert binary spoligotype 00101 etc to columns - for both itol and ggtree
 spol_data <- get_binary_cols(data, "spoligotype", "s")
 
-
 # Clean up trees - only include samples which are in the spol dataset
-l3_tree <- keep.tip(intersect(data$sample, l3_tree$tip.label))
-l4_tree <- keep.tip(intersect(data$sample, l4_tree$tip.label))
-l1_7_tree <- keep.tip(intersect(data$sample, l1_7_tree$tip.label))
+l3_tree <- ape::keep.tip(l3_tree, intersect(data$sample, l3_tree$tip.label))
+l4_tree <- keep.tip(l4_tree, intersect(data$sample, l4_tree$tip.label))
+l1_7_tree <- keep.tip(l1_7_tree, intersect(data$sample, l1_7_tree$tip.label))
 
 # ggtree ----
 
@@ -162,15 +177,39 @@ names(spol_data_lv1_split) <- paste0("lineage", names(spol_data_lv1_split))
 l3_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage3$lin_level_2)
 l4_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage4$lin_level_2)
 
+# Level 2 colours - successively lighten the top lin level colour proportional to the number of sublins
+# Only relevant to the L1&7 and L5, 6, etc trees - level 2 for lin 3 and 4 are defined above
+lv2_cols_list <- list()
+for(lin in names(spol_data_lv1_split)){
+  
+  # lin_1_7_lv1_cols <- lin_colours_lv_1[c("1", "7")]
+  lin_data <- spol_data_lv1_split[[lin]]
+  lin_lv1 <- unique(lin_data$lin_level_1)
+  lin_top_col <- lin_colours_lv_1[lin_lv1]
+  # 7 
+  # "#00B9FFB3" 
+  lins_lv2 <- sort(unique(lin_data$lin_level_2))
+  n_lins_lv2 <- length(lins_lv2)
+  
+  # Get lin level 2 colours
+  # If the first of the level 2 colours is the same as the main lin (top level colour), then keep it the same
+  # If not, then start from a lighter colour 
+  if(lins_lv2[1] == names(lin_top_col)[1]){
+    # 7 
+    # "#00B9FF" 
+    lv2_cols_list[[lin]] <- dark_to_light(lins_lv2, lin_top_col)
+  }else{
+    lv2_cols_list[[lin]] <- dark_to_light(lins_lv2, lighten(lin_top_col, 1/n_lins_lv2))
+  }
+}
 
 # L1 & L7 
 
-# Need to get level 2 colours for L1 & L7 based on the top level colours
+lin_1_7_lv2_cols <- c(lv2_cols_list$lineage1, lv2_cols_list$lineage7)
 
-
+# Plot ----
 
 do_tree <- "1_7"
-
 
 # Set up ggtree parameters 
 width <- 0.05
@@ -245,14 +284,38 @@ os <- 0.0010
   l1_7_ggtree <- ggtree(l1_7_tree, size = line_sz, layout = "circular")
   
   l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
-                          # color = NA,
-                          width = 0.2,
+                          color = NA,
+                          width = 0.1,
                           offset = 0,
-                          colnames = F, 
-                          legend_title = "Lineage")+
-    scale_fill_manual(values = lin_colours_lv_1, breaks = names(lin_colours_lv_1) )
+                          colnames = F)+
+    scale_fill_manual(values = lin_colours_lv_1[c("1", "7")], 
+                      breaks = names(lin_colours_lv_1[c("1", "7")]), 
+                      name = "Lineage")
   
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
+  
+  l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv2_data_ggplot,
+                          color = NA,
+                          width = 0.1,
+                          offset = os+0.004,
+                          colnames = F)+
+    scale_fill_manual(values = lin_1_7_lv2_cols,
+                      breaks = names(lin_1_7_lv2_cols), 
+                      name = "Sublineage")
+  
+  l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
+  
+  l1_7_ggtree <- gheatmap(l1_7_ggtree, spol_data_ggplot,
+                          offset = os+(0.004*3),
+                          color = NA,
+                          low="white",
+                          high="black",
+                          colnames = F)+
+    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+    labs(fill = "Spoligotype")+
+    ggtitle("Lineages 1 & 7")
+  
+  ggsave(file = paste0(results_path, "lin1_7_ggtree.png"), plot = l1_7_ggtree)
   
   # ggsave(plot = l1_7_ggtree, filename = paste0(results_path, "lin1_7_ggtree.svg"))
 
