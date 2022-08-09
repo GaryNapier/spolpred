@@ -93,9 +93,11 @@ itol_templates_path <- "../pipeline/itol_templates/"
 
 # spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
 spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
+l2_treefile <- paste0(newick_path, "grouped_samples_lineage2.treefile")
 l3_treefile <- paste0(newick_path, "grouped_samples_lineage3.treefile")
 l4_treefile <- paste0(newick_path, "grouped_samples_lineage4.treefile")
 l1_7_treefile <- paste0(newick_path, "grouped_samples_L_1_7.treefile")
+l5_6_8_9_La_treefile <- paste0(newick_path, "grouped_samples_L_5_6_8_9_La.treefile")
 # l3_treefile <- paste0(newick_path, "lin_3_all_samps.treefile")
 itol_binary_template_file <- paste0(itol_templates_path, "itol.binary.txt")
 itol_outfile <- paste0(results_path, "itol_all_spol_binary.txt")
@@ -108,9 +110,11 @@ itol_outfile <- paste0(results_path, "itol_all_spol_binary.txt")
 
 spoligo_lineage_full <- read.csv(spoligo_lineage_full_file, header = T, 
                                    colClasses = c("spoligotype" = "character"))
+l2_tree <- midpoint.root(read.tree(l2_treefile))
 l3_tree <- midpoint.root(read.tree(l3_treefile))
 l4_tree <- midpoint.root(read.tree(l4_treefile))
 l1_7_tree <- midpoint.root(read.tree(l1_7_treefile))
+l5_6_8_9_La_tree <- midpoint.root(read.tree(l5_6_8_9_La_treefile))
 itol_binary_template <- readChar(itol_binary_template_file, nchars = 1e6)
 
 
@@ -153,9 +157,11 @@ rownames(data) <- data$sample
 spol_data <- get_binary_cols(data, "spoligotype", "s")
 
 # Clean up trees - only include samples which are in the spol dataset
+l2_tree <- ape::keep.tip(l2_tree, intersect(data$sample, l2_tree$tip.label))
 l3_tree <- ape::keep.tip(l3_tree, intersect(data$sample, l3_tree$tip.label))
-l4_tree <- keep.tip(l4_tree, intersect(data$sample, l4_tree$tip.label))
-l1_7_tree <- keep.tip(l1_7_tree, intersect(data$sample, l1_7_tree$tip.label))
+l4_tree <- ape::keep.tip(l4_tree, intersect(data$sample, l4_tree$tip.label))
+l1_7_tree <- ape::keep.tip(l1_7_tree, intersect(data$sample, l1_7_tree$tip.label))
+l5_6_8_9_La_tree <- ape::keep.tip(l5_6_8_9_La_tree, intersect(data$sample, l5_6_8_9_La_tree$tip.label))
 
 # ggtree ----
 
@@ -173,7 +179,8 @@ spol_data_lv1_split <- split(spol_data, spol_data$lin_level_1)
 # Add 'lineage' for easier subsetting
 names(spol_data_lv1_split) <- paste0("lineage", names(spol_data_lv1_split))
 
-# Get colours fro each level 2 (4.1, 4.2 etc) - lin 3 and 4 only
+# Get colours for each level 2 (4.1, 4.2 etc) - lin 2, 3 and 4 only
+l2_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage2$lin_level_2)
 l3_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage3$lin_level_2)
 l4_lv2_cols <- ggtree_strip_cols(spol_data_lv1_split$lineage4$lin_level_2)
 
@@ -203,13 +210,24 @@ for(lin in names(spol_data_lv1_split)){
   }
 }
 
-# L1 & L7 
+# L1 & L7 cols
 
 lin_1_7_lv2_cols <- c(lv2_cols_list$lineage1, lv2_cols_list$lineage7)
 
+# L 5, 6, 8, 9, La cols
+
+l5_6_8_9_La_lv1_cols <- lin_colours_lv_1[c("5", "6", "9", "La1", "La2", "La3")]
+
+l5_6_8_9_La_lv2_cols <- c(lv2_cols_list$lineage5, 
+                      lv2_cols_list$lineage6, 
+                      lv2_cols_list$lineage9, 
+                      lv2_cols_list$lineageLa1, 
+                      lv2_cols_list$lineageLa2, 
+                      lv2_cols_list$lineageLa3)
+
 # Plot ----
 
-do_tree <- "1_7"
+do_tree <- "5_etc"
 
 # Set up ggtree parameters 
 width <- 0.05
@@ -218,9 +236,37 @@ line_sz <- 0.1
 angle <- 30
 os <- 0.0010
 
+# L2
+
+if(do_tree == "2"){
+  
+  l2_ggtree <- ggtree(l2_tree, size = line_sz, layout = "circular")
+  l2_ggtree <- gheatmap(l2_ggtree, lin_lv2_data_ggplot,
+                        color = NA, 
+                        width = width,
+                        offset = 0,
+                        colnames = F)+
+    scale_fill_manual(values = l2_lv2_cols, breaks = names(l2_lv2_cols) )+
+    labs(fill = "Subineage")
+  
+  l2_ggtree <- l2_ggtree + ggnewscale::new_scale_fill()
+  
+  l2_ggtree <- gheatmap(l2_ggtree, spol_data_ggplot,
+                        offset = os+0.0020,
+                        color = NA,
+                        low="white",
+                        high="black",
+                        colnames = F) +
+    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+    labs(fill = "Spoligotype")+
+    ggtitle("Lineage 2")
+  
+  # ggsave(file = paste0(results_path, "lin2_ggtree.png"), plot = l2_ggtree)
+  # ggsave(file = paste0(results_path, "lin2_ggtree.svg"), plot = l2_ggtree)
+  
 # L3
 
-  if(do_tree == "3"){
+}else if(do_tree == "3"){
   l3_ggtree <- ggtree(l3_tree, size = line_sz, layout = "circular")
   l3_ggtree <- gheatmap(l3_ggtree, lin_lv2_data_ggplot,
                         color = NA, 
@@ -319,14 +365,35 @@ os <- 0.0010
   
   # ggsave(plot = l1_7_ggtree, filename = paste0(results_path, "lin1_7_ggtree.svg"))
 
+}else if(do_tree == "5_etc"){
+  
+  l5_6_8_9_La_ggtree <- ggtree(l5_6_8_9_La_tree, size = line_sz, layout = "circular")
+  
+  l5_6_8_9_La_ggtree <- gheatmap(l5_6_8_9_La_ggtree, lin_lv1_data_ggplot,
+                          color = NA,
+                          width = 0.1,
+                          offset = 0,
+                          colnames = F)+
+    scale_fill_manual(values = l5_6_8_9_La_lv1_cols, 
+                      breaks = names(l5_6_8_9_La_lv1_cols), 
+                      name = "Lineage")
+  
+  l5_6_8_9_La_ggtree <- l5_6_8_9_La_ggtree + ggnewscale::new_scale_fill()
+  
+  l5_6_8_9_La_ggtree <- gheatmap(l5_6_8_9_La_ggtree, spol_data_ggplot,
+                          offset = os+(0.004*3),
+                          color = NA,
+                          low="white",
+                          high="black",
+                          colnames = F)+
+    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+    labs(fill = "Spoligotype")+
+    ggtitle("Lineages 5, 6, 9, La")
+  
+  # ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "l5_6_8_9_La_ggtree.png"))
+  # ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "l5_6_8_9_La_ggtree.svg"))
+  
 }
-
-
-
-
-
-
-
 
 
 # itol ----
