@@ -149,6 +149,30 @@ sort_df_by_col_name <- function(df, col, decreasing = T){
   df[order(df[, col],  decreasing = decreasing),]
 }
 
+rm_dup_group <- function(df, col){
+  # If rows of groups are repeated in a col, replace repeats with blank ("")
+  # For final display of tables
+  # e.g. 
+  # in
+  # lineage value
+  # L1      10
+  # L1      20
+  # L1      25
+  # L2      100
+  # L2      3
+  # L2      21
+  # out
+  # lineage value
+  # L1      10
+  #         20
+  #         25
+  # L2      100
+  #         3
+  #         21
+  df[which(duplicated(df[col])), col] <- ""
+  df
+}
+
 ```
 
 
@@ -189,6 +213,10 @@ spol_data <- read.csv(spol_data_file, header = T,
 spol_data$lineage <- ifelse(spol_data$lineage == "", "lineage1.2.2.1", spol_data$lineage)
 # Remove 0000000000000000000000000000000000000000000 - error apparently
 spol_data <- subset(spol_data, !(spoligotype == "0000000000000000000000000000000000000000000"))
+
+# Clean SIT and family cols
+spol_data$SIT <- ifelse(spol_data$SIT == "", "-", spol_data$SIT)
+spol_data$family <- ifelse(spol_data$family == "", "-", spol_data$family)
 
 # Separate out all the metadata into lookup tables and data tables
 lin_spol_sit_fam <- odr(unique(select(spol_data, lineage, spoligotype, SIT, family)))
@@ -420,6 +448,9 @@ spol_data <- cbind(samp_spol, non_samp_spol_add_lin)
 
 head(spol_data)
 
+
+
+
 # Make a freq table
 lv1_tab <- tab2df(select(spol_data, spoligotype, lin_level_1))
 
@@ -435,14 +466,14 @@ head(lv1_col_prob)
 spol <- row.names(lv1_prob)
 # Save the colnames before adding spoligotype
 col_nms <- colnames(lv1_prob)
-lv1_tab$spol <- row.names(lv1_tab)
-lv1_prob$spol <- row.names(lv1_prob)
-lv1_col_prob$spol <- row.names(lv1_col_prob)
+lv1_tab$spoligotype <- row.names(lv1_tab)
+lv1_prob$spoligotype <- row.names(lv1_prob)
+lv1_col_prob$spoligotype <- row.names(lv1_col_prob)
 
 # Pull out the non-zeros for each lineage and store each lineage (col) as a separate list entry
 lv1_list <- list()
 for(col in col_nms){
-  df <- lv1_prob[, c("spol", col)]
+  df <- lv1_prob[, c("spoligotype", col)]
   df <- df[which(df[, col] > 0), ]
   lv1_list[[col]] <- sort_df_by_col_name(df, col)
 }
@@ -455,16 +486,16 @@ head(lv1_prob)
 for(lin in names(lv1_list)){
   
   # Merge in the freqs
-  lv1_list[[lin]] <- setNames(merge(lv1_list[[lin]], lv1_tab[, c("spol", lin)], 
-        by = "spol", 
+  lv1_list[[lin]] <- setNames(merge(lv1_list[[lin]], lv1_tab[, c("spoligotype", lin)], 
+        by = "spoligotype", 
         sort = F), 
-        c("spol", lin, "freq"))
+        c("spoligotype", lin, "freq"))
   
   # Merge in the freq as a proportion of the total n samps per lin
-  lv1_list[[lin]] <- setNames(merge(lv1_list[[lin]], lv1_col_prob[, c("spol", lin)],
-      by = "spol",
+  lv1_list[[lin]] <- setNames(merge(lv1_list[[lin]], lv1_col_prob[, c("spoligotype", lin)],
+      by = "spoligotype",
       sort = F), 
-      c("spol", "prob", "freq", "col_prob"))
+      c("spoligotype", "prob", "freq", "col_prob"))
 
   # names(lv1_list[[lin]]) <- c("spol", "prob", "freq")
   
@@ -478,11 +509,125 @@ for(lin in names(lv1_list)){
   
 }
 
-lv1_list
+# Add the lineages as a col before r-binding
+lv1_list <- lapply(seq(lv1_list), function(i){
+  lin <- names(lv1_list[i])
+  lv1_list[[i]]$lineage <- rep(lin, nrow(lv1_list[[i]])); lv1_list[[i]]
+})
+lv1_df <- do.call("rbind", lv1_list)
+
+# Merge the SIT and family cols 
+
+lv1_df <- merge(lv1_df, sit_fam_spol, 
+                by = "spoligotype", 
+                all.x = T, sort = F)
+
+# Tidy
+lv1_df$col_prob <- round(lv1_df$col_prob*100, 1)
+lv1_df <- dplyr::select(lv1_df, lineage, spoligotype, SIT, family, prob, freq, col_prob)
+# Remove dup lins
+lv1_df <- rm_dup_group(lv1_df, "lineage")
+
+names(lv1_df) <- c("lineage", "spoligotype", "SIT", "family", "weighted proportion \nof lineage", "n", "%n of lineage")
 
 ```
 
 
+```{r spol-predictions-loop, echo = T, warning=F}
+
+# Get levels
+levels <- names(spol_data)[grepl("level", names(spol_data))]
+# Don't go to level 5
+levels <- levels[-length(levels)]
+
+
+#####
+# TEST with just first two levels
+levels <- c("lin_level_1", "lin_level_2")
+#####
+
+# Loop over levels and calcualate top spoligotypes for each lin
+level_results_list <- list()
+for(level in levels){
+  # Make freq table for the level
+  lv_tab <- tab2df(dplyr::select(spol_data, spoligotype, level))
+  
+  # Calc probs
+  lv_col_prob <- col_probs(lv_tab)
+  lv_prob <- row_probs(col_probs(lv_tab))
+  
+  # Save the spoligotype
+  spol <- row.names(lv_prob)
+  # Save the colnames before adding spoligotype
+  col_nms <- colnames(lv_prob)
+  lv_tab$spoligotype <- row.names(lv_tab)
+  lv_prob$spoligotype <- row.names(lv_prob)
+  lv_col_prob$spoligotype <- row.names(lv_col_prob)
+  
+  
+  # Pull out the non-zeros for each lineage and store each lineage (col) as a separate list entry
+  lv_list <- list()
+  for(col in col_nms){
+    df <- lv_prob[, c("spoligotype", col)]
+    df <- df[which(df[, col] > 0), ]
+    lv_list[[col]] <- sort_df_by_col_name(df, col)
+  }
+  
+  # Merge in sample numbers (freqs) and col probs (freqs as proportion)
+  
+  for(lin in names(lv_list)){
+  
+    # Merge in the freqs
+    lv_list[[lin]] <- setNames(merge(lv_list[[lin]], lv_tab[, c("spoligotype", lin)], 
+          by = "spoligotype", 
+          sort = F), 
+          c("spoligotype", lin, "freq"))
+    
+    # Merge in the freq as a proportion of the total n samps per lin
+    lv_list[[lin]] <- setNames(merge(lv_list[[lin]], lv_col_prob[, c("spoligotype", lin)],
+        by = "spoligotype",
+        sort = F), 
+        c("spoligotype", "prob", "freq", "col_prob"))
+  
+    # names(lv1_list[[lin]]) <- c("spol", "prob", "freq")
+    
+    # Sort
+    lv_list[[lin]] <- dplyr::arrange(lv_list[[lin]], desc(prob), desc(freq))
+    
+    # Get the top 5 sample proportions
+    top_col_prob <- sort(lv_list[[lin]]$col_prob, decreasing = T)
+    top_col_prob <- top_col_prob[1:5]
+    lv_list[[lin]] <- lv_list[[lin]][which(lv_list[[lin]]$col_prob %in% top_col_prob), ]
+    
+  }
+  
+  # Add the lineages as a col before r-binding
+  lv_list <- lapply(seq(lv_list), function(i){
+    lin <- names(lv_list[i])
+    lv_list[[i]]$lineage <- rep(lin, nrow(lv_list[[i]])); lv_list[[i]]
+  })
+  lv_df <- do.call("rbind", lv_list)
+  
+  # Merge the SIT and family cols 
+  
+  lv_df <- merge(lv_df, sit_fam_spol, 
+                  by = "spoligotype", 
+                  all.x = T, sort = F)
+  
+  # Tidy
+  lv_df$col_prob <- round(lv_df$col_prob*100, 1)
+  lv_df <- dplyr::select(lv_df, lineage, spoligotype, SIT, family, prob, freq, col_prob)
+  # Remove dup lins
+  lv_df <- rm_dup_group(lv_df, "lineage")
+  
+  names(lv_df) <- c("lineage", "spoligotype", "SIT", "family", "weighted proportion \nof lineage", "n", "%n of lineage")
+  
+}
+
+
+
+
+```
 
 
 
