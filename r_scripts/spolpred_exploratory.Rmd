@@ -175,7 +175,6 @@ rm_dup_group <- function(df, col){
 
 ```
 
-
 ```{r variables, echo = F, warning=F, message=F}
 
 
@@ -190,6 +189,7 @@ data_path <- "../data/"
 ```
 
 #### Data file
+
 ```{r files, echo = T, warning=F, message=F}
 
 spol_data_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
@@ -272,7 +272,7 @@ length(unique(spol_data$lineage))
 
 ```
 
-Lineage frequencies
+#### Lineage frequencies
 
 ```{r n-spol-lin, echo = T, warning=F}
 
@@ -281,11 +281,11 @@ table(spol_data$lin_level_1) %>% as.data.frame() %>% arrange(Var1)
 table(spol_data$lin_level_2) %>% as.data.frame() %>% arrange(Var1)
 table(spol_data$lin_level_3) %>% as.data.frame() %>% arrange(Var1)
 table(spol_data$lin_level_4) %>% as.data.frame() %>% arrange(Var1)
-table(spol_data$lin_level_5) %>% as.data.frame() %>% arrange(Var1)
+# table(spol_data$lin_level_5) %>% as.data.frame() %>% arrange(Var1)
 
 ```
 
-Top ten spoligotypes per lineage, per level
+#### Top ten spoligotypes per lineage, per level
 
 ```{r top-spol-lin, echo = T, warning=F}
 
@@ -296,7 +296,7 @@ top_spol_freq(spol_data, lin_level_4)
 
 ```
 
-Top ten most frequent spoligotypes and their lineages (per level)
+#### Top ten most frequent spoligotypes and their lineages (per level)
 
 ```{r top-ten-spol-tables, echo = T, warning=F}
 
@@ -311,7 +311,7 @@ table(top_spol_sub$spoligotype, top_spol_sub$lin_level_4)
 
 ```
 
-### Count how many spoligotypes are in more than 1 lineage etc
+#### Count how many spoligotypes are in more than 1 lineage etc
 
 ```{r spol-counts, echo = F, warning = F}
 
@@ -359,6 +359,8 @@ SpoligoMultiLv5Lineage4 <- lv5Summary %>% dplyr::group_by(spoligotype) %>% filte
 
 ```
 
+
+
 ```{r dummy-predictions, echo = F, warning=F}
 
 # x <- as.data.frame.matrix(table(dummy$spol, dummy$lineage))
@@ -398,14 +400,6 @@ dummy <- rbind(dummy, dummy, dummy)
 dummy_bananas <- rbind(data.frame(spol = rep("bananas", 1000), lineage = rep("L1", 1000)), dummy)
 # Balance out L2 and L3 a bit (only ~10 samples in L2 and L3)
 
-# L2 <- subset(dummy_bananas, lineage == "L2")
-# L3 <- subset(dummy_bananas, lineage == "L3")
-# 
-# L2 <- data.frame(spol = rep(L2$spol, 10), lineage = rep(L2$lineage, 10))
-# L3 <- data.frame(spol = rep(L3$spol, 10), lineage = rep(L3$lineage, 10))
-
-# dummy_bananas <- rbind(dummy_bananas, L2, L3)
-
 dummy_bananas_freqs <- as.data.frame.matrix(table(dummy_bananas))
 
 dummy_bananas_freqs
@@ -434,7 +428,7 @@ row_probs(tab2df(bs_df))
 
 ```
 
-```{r spol-predictions, echo = T, warning=F}
+```{r spol-predictions-one-level, echo = F, warning=F}
 
 # Try the above on the real data
 
@@ -448,11 +442,10 @@ spol_data <- cbind(samp_spol, non_samp_spol_add_lin)
 
 head(spol_data)
 
-
-
+# ---
 
 # Make a freq table
-lv1_tab <- tab2df(select(spol_data, spoligotype, lin_level_1))
+lv1_tab <- tab2df(select(spol_data, spoligotype, lin_level_2))
 
 # Calc probs
 lv1_col_prob <- col_probs(lv1_tab)
@@ -517,10 +510,8 @@ lv1_list <- lapply(seq(lv1_list), function(i){
 lv1_df <- do.call("rbind", lv1_list)
 
 # Merge the SIT and family cols 
-
-lv1_df <- merge(lv1_df, sit_fam_spol, 
-                by = "spoligotype", 
-                all.x = T, sort = F)
+# merge(lv1_df, sit_fam_spol, by = "spoligotype", all.x = T, sort = F)
+lv1_df <- plyr::join(lv1_df, sit_fam_spol, by = "spoligotype", type = "left")
 
 # Tidy
 lv1_df$col_prob <- round(lv1_df$col_prob*100, 1)
@@ -528,29 +519,24 @@ lv1_df <- dplyr::select(lv1_df, lineage, spoligotype, SIT, family, prob, freq, c
 # Remove dup lins
 lv1_df <- rm_dup_group(lv1_df, "lineage")
 
-names(lv1_df) <- c("lineage", "spoligotype", "SIT", "family", "weighted proportion \nof lineage", "n", "%n of lineage")
+# names(lv1_df) <- c("lineage", "spoligotype", "SIT", "family", "weighted proportion \nof lineage", "n", "%n of lineage")
 
 ```
 
+```{r spol-predictions-loop, echo = F, warning=F, R.options = list(width = 1000)}
 
-```{r spol-predictions-loop, echo = T, warning=F}
+# # Get levels
+# levels <- names(spol_data)[grepl("level", names(spol_data))]
+# # Don't go to level 5
+# levels <- levels[-length(levels)]
 
-# Get levels
-levels <- names(spol_data)[grepl("level", names(spol_data))]
-# Don't go to level 5
-levels <- levels[-length(levels)]
-
-
-#####
-# TEST with just first two levels
-levels <- c("lin_level_1", "lin_level_2")
-#####
+levels <- c("lin_level_1", "lin_level_2", "lin_level_3", "lin_level_4")
 
 # Loop over levels and calcualate top spoligotypes for each lin
 level_results_list <- list()
 for(level in levels){
   # Make freq table for the level
-  lv_tab <- tab2df(dplyr::select(spol_data, spoligotype, level))
+  lv_tab <- tab2df(dplyr::select(spol_data, spoligotype, all_of(level)))
   
   # Calc probs
   lv_col_prob <- col_probs(lv_tab)
@@ -609,10 +595,7 @@ for(level in levels){
   lv_df <- do.call("rbind", lv_list)
   
   # Merge the SIT and family cols 
-  
-  lv_df <- merge(lv_df, sit_fam_spol, 
-                  by = "spoligotype", 
-                  all.x = T, sort = F)
+  lv_df <- plyr::join(lv_df, sit_fam_spol, by = "spoligotype", type = "left")
   
   # Tidy
   lv_df$col_prob <- round(lv_df$col_prob*100, 1)
@@ -620,12 +603,13 @@ for(level in levels){
   # Remove dup lins
   lv_df <- rm_dup_group(lv_df, "lineage")
   
-  names(lv_df) <- c("lineage", "spoligotype", "SIT", "family", "weighted proportion \nof lineage", "n", "%n of lineage")
+  # names(lv_df) <- c("lineage", "spoligotype", "SIT", "family", "weighted proportion \nof lineage", "n", "%n of lineage")
+  
+  level_results_list[[level]] <- lv_df
   
 }
 
-
-
+level_results_list
 
 ```
 
