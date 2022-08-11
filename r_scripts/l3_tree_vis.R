@@ -91,14 +91,16 @@ itol_templates_path <- "../pipeline/itol_templates/"
 
 # Files ----
 
-# spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.full.txt")
+# Data
 spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
+# Trees
+all_lins_treefile <- paste0(newick_path, "all_lineages.treefile")
 l2_treefile <- paste0(newick_path, "grouped_samples_lineage2.treefile")
 l3_treefile <- paste0(newick_path, "grouped_samples_lineage3.treefile")
 l4_treefile <- paste0(newick_path, "grouped_samples_lineage4.treefile")
 l1_7_treefile <- paste0(newick_path, "grouped_samples_L_1_7.treefile")
 l5_6_8_9_La_treefile <- paste0(newick_path, "grouped_samples_L_5_6_8_9_La.treefile")
-# l3_treefile <- paste0(newick_path, "lin_3_all_samps.treefile")
+# Other
 itol_binary_template_file <- paste0(itol_templates_path, "itol.binary.txt")
 itol_outfile <- paste0(results_path, "itol_all_spol_binary.txt")
 
@@ -110,6 +112,7 @@ itol_outfile <- paste0(results_path, "itol_all_spol_binary.txt")
 
 spoligo_lineage_full <- read.csv(spoligo_lineage_full_file, header = T, 
                                    colClasses = c("spoligotype" = "character"))
+all_tree <- midpoint.root(read.tree(all_lins_treefile))
 l2_tree <- midpoint.root(read.tree(l2_treefile))
 l3_tree <- midpoint.root(read.tree(l3_treefile))
 l4_tree <- midpoint.root(read.tree(l4_treefile))
@@ -157,11 +160,17 @@ rownames(data) <- data$sample
 spol_data <- get_binary_cols(data, "spoligotype", "s")
 
 # Clean up trees - only include samples which are in the spol dataset
-l2_tree <- ape::keep.tip(l2_tree, intersect(data$sample, l2_tree$tip.label))
-l3_tree <- ape::keep.tip(l3_tree, intersect(data$sample, l3_tree$tip.label))
-l4_tree <- ape::keep.tip(l4_tree, intersect(data$sample, l4_tree$tip.label))
-l1_7_tree <- ape::keep.tip(l1_7_tree, intersect(data$sample, l1_7_tree$tip.label))
-l5_6_8_9_La_tree <- ape::keep.tip(l5_6_8_9_La_tree, intersect(data$sample, l5_6_8_9_La_tree$tip.label))
+all_tree <- ape::keep.tip(all_tree, intersect(spol_data$sample))
+all_tree <- ape::drop.tip(all_tree, c("ERR2517175", "ERR2486961", "SRR5067351")) # These samples not colouring for some reason.
+l2_tree <- ape::keep.tip(l2_tree, intersect(spol_data$sample, l2_tree$tip.label))
+l3_tree <- ape::keep.tip(l3_tree, intersect(spol_data$sample, l3_tree$tip.label))
+l4_tree <- ape::keep.tip(l4_tree, intersect(spol_data$sample, l4_tree$tip.label))
+l1_7_tree <- ape::keep.tip(l1_7_tree, intersect(spol_data$sample, l1_7_tree$tip.label))
+l5_6_8_9_La_tree <- ape::keep.tip(l5_6_8_9_La_tree, intersect(spol_data$sample, l5_6_8_9_La_tree$tip.label))
+
+# Subset L4, still too big
+set.seed(123)
+l4_tree <- keep.tip(l4_tree, sample(l4_tree$tip.label, floor(length(l4_tree$tip.label)*0.5)))
 
 # ggtree ----
 
@@ -227,7 +236,7 @@ l5_6_8_9_La_lv2_cols <- c(lv2_cols_list$lineage5,
 
 # Plot ----
 
-do_tree <- "5_etc"
+do_tree <- "all"
 
 # Set up ggtree parameters 
 width <- 0.05
@@ -235,6 +244,9 @@ font_sz <- 3
 line_sz <- 0.1
 angle <- 30
 os <- 0.0010
+
+png_width <- 1000/5
+png_height <- 1000/5
 
 # L2
 
@@ -261,7 +273,7 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineage 2")
   
-  # ggsave(file = paste0(results_path, "lin2_ggtree.png"), plot = l2_ggtree)
+  ggsave(file = paste0(results_path, "lin2_ggtree.png"), plot = l2_ggtree, width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin2_ggtree.svg"), plot = l2_ggtree)
   
 # L3
@@ -288,16 +300,12 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineage 3")
   
-  # ggsave(file = paste0(results_path, "lin3_ggtree.png"), plot = l3_ggtree)
+  ggsave(file = paste0(results_path, "lin3_ggtree.png"), plot = l3_ggtree, width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin3_ggtree.svg"), plot = l3_ggtree)
 
 }else if(do_tree == "4"){
 
   # L4
-  
-  # Subset L4, still too big
-  set.seed(123)
-  l4_tree <- keep.tip(l4_tree, sample(l4_tree$tip.label, floor(length(l4_tree$tip.label)*0.5)))
   
   l4_ggtree <- ggtree(l4_tree, size = line_sz, layout = "circular")
   l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot,
@@ -361,7 +369,7 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineages 1 & 7")
   
-  ggsave(file = paste0(results_path, "lin1_7_ggtree.png"), plot = l1_7_ggtree)
+  ggsave(file = paste0(results_path, "lin1_7_ggtree.png"), plot = l1_7_ggtree, width = png_width, height = png_width, units = "mm")
   
   # ggsave(plot = l1_7_ggtree, filename = paste0(results_path, "lin1_7_ggtree.svg"))
 
@@ -390,8 +398,27 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineages 5, 6, 9, La")
   
-  # ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "l5_6_8_9_La_ggtree.png"))
+  ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "lin5_6_8_9_La_ggtree.png"), width = png_width, height = png_width, units = "mm")
   # ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "l5_6_8_9_La_ggtree.svg"))
+  
+}else if(do_tree == "all"){
+  
+  all_ggtree <- ggtree(all_tree, size = 0.1, layout = "circular")
+  all_ggtree <- gheatmap(all_ggtree, lin_lv1_data_ggplot,
+                                 color = NA,
+                                 width = 0.1,
+                                 offset = 0.0001,
+                                 colnames = F)+
+    scale_fill_manual(values = lin_colours_lv_1, 
+                      breaks = names(lin_colours_lv_1), 
+                      name = "Lineage")
+  
+  ggsave(plot = all_ggtree, filename = paste0(results_path, "all_ggtree.svg"))
+  
+  
+}else if(do_tree == "skip"){
+  
+  
   
 }
 
@@ -399,7 +426,7 @@ if(do_tree == "2"){
 # itol ----
 
 # Subset for itol
-itol_data <- select(spol_data, -(spoligotype:max_lin), sample)
+itol_data <- select(spol_data, -(lineage:max_lin), sample)
 len_spol <- len_str("1110000000111111111111000000000000011111000")
 
 # FIELD_SHAPES,1,1,1
