@@ -213,9 +213,9 @@ lin1_7_ggtree <- paste0(results_path, "lin1_7_ggtree.png")
 lin2_ggtree <- paste0(results_path, "lin2_ggtree.png")
 lin3_ggtree <- paste0(results_path, "lin3_ggtree.png")
 lin4_ggtree <- paste0(results_path, "lin4_ggtree.png")
-lin5_6_8_9_La_ggtree <- paste0(results_path, "l5_6_8_9_La_ggtree.png")
+lin5_6_8_9_La_ggtree <- paste0(results_path, "lin5_6_8_9_La_ggtree.png")
 
-file.exists(lin5_6_8_9_La_ggtree)
+
 
 ```
 
@@ -263,6 +263,18 @@ exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
 spol_data <- merge(spol_data, exp,
                    by.x = "sample", by.y = "id", all.x = T, 
                    sort = F)
+
+# Tidy main results table
+names(spol_lin_levels_table) <- c("Level",
+                                  "Lineage",
+                                  "Spoligotype",
+                                  "SIT",
+                                  "Family",
+                                  "Proportion in lin.",
+                                  "n in lineage",
+                                  "% of lin")
+
+spol_lin_levels_table$Level <- ifelse(is.na(spol_lin_levels_table$Level), "", spol_lin_levels_table$Level)
 
 ```
 
@@ -324,7 +336,7 @@ Coll (spolpred) [@Coll2012]
 
 ## Results
 
-### Correlation of spoligotypes with lineages
+**Correlation of spoligotypes with lineages**
 
 Before filtering spoligotypes:
 
@@ -341,6 +353,25 @@ n samples - `r fmt(n_total_samps_after_filter)`
 n unique lineages - `r fmt(n_unique_lins_after_filter)`
 
 n unique spoligotypes - `r fmt(n_unique_spol_after_filter)`
+
+
+
+
+
+## Methods
+
+
+**Association of spoligotypes to lineages**
+
+As there were many spoligotypes in low numbers of samples and therefore offering little predictive power, those appearing in fewer than five samples were excluded. Since we were interested in the strength of association between spoligotypes and the various levels of the Napier *et al.* lineage system, the lineages were parsed into a hierarchy for each round of analysis. For example, the first level analysed the association between each spoligotype and the main *Mtb* lineages 1-7. Next was the association between each spoligotype and the second level, represented by lineages 1.1, 1.2, 2.1, 2.2, etc. This hierarchy consisted of four levels, the last being e.g. lineage 1.2.1.2. As the system is hierarchical, any spoligotypes still appearing in samples at a higher level were included in the association calculations. Hence the results in **Table \@ref(tab:spol-lin-levels-table)** show for example lineage 3 appearing along with lineage 3.1 at the second lineage level. 
+
+At each lineage level, a frequency table was made of samples for each spoligotype by lineage. For each lineage, the sample frequencies were first converted to a proportion of the total lineage sample size in order to weight the final association score by sample size. Then, for each spoligotype, this sample size proportion was calculated as a proportion of occurrences across each lineage (column "Proportion in lineage" in **Table \@ref(tab:spol-lin-levels-table)**).
+      
+These calculations yield a measure of how purely associated each spoligotype is to each lineage, at each level. A score of 1 for a spoligotype-lineage combination means a spoligotype only appears in that particular lineage. For example, spoligotype "1001111111111111111111111111000010110001111" scores 1 for lineage 1.1, meaning this spoligotype is only found in this lineage and no others (at the second level of the lineage system). 
+
+Although there were many examples of spoligotypes exclusive to lineages, in many cases they nevertheless appeared in a relatively small proportion of that lineage's total samples, for example spoligotype 1101111111111111111001111111000010111111111 is only found in lineage 1, but appears in 17.2% of that lineage's total samples. On the other hand, less pure spoligotypes were found which in fact appeared in a large proportion of samples (spoligotype 0000000000000000000000000000000000111111111 scored 0.99 for association to lineage 2, but appears in 91.2% of its samples). Therefore, we include the number of samples with a given spoligotype as well as this number as a percentage of the lineage's total samples in **Table \@ref(tab:spol-lin-levels-table)**. 
+
+For simplicity, our results only show the top five most-closely associated spoligotypes for each lineage. These are ordered first by purity - i.e. the "Proportion in lineage score", then by percentage of samples in the lineage with this spoligotype (column "% of lineage").
 
 
 ## Discussion

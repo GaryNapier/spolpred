@@ -49,3 +49,8 @@ df <- data.frame(XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX = "LON
 knitr::kable(df, row.names = F, caption = cap, format = "pipe")
 
 ```
+
+
+Here is a reference [@Napier2020]
+
+# REFERENCES

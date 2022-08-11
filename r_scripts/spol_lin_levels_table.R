@@ -150,11 +150,10 @@ spol_lin_levels_table <- lapply(seq(spol_lin_levels_table), function(i){
 })
 spol_lin_levels_table <- do.call("rbind", spol_lin_levels_table)
 spol_lin_levels_table <- spol_lin_levels_table %>% select(level, everything())
+spol_lin_levels_table$level <- gsub("lin_level_", "", spol_lin_levels_table$level)
 spol_lin_levels_table <- rm_dup_group(spol_lin_levels_table, "level")
-
 spol_lin_levels_table$prob <- round(spol_lin_levels_table$prob, 2)
-spol_lin_levels_table$Spoligotype <- paste0("\"", spol_lin_levels_table$Spoligotype, "\"")
-spol_lin_levels_table$Level <- gsub("lin_level_", "", spol_lin_levels_table$Level)
+spol_lin_levels_table$spoligotype <- paste0("\"", spol_lin_levels_table$spoligotype, "\"")
 
 names(spol_lin_levels_table) <- c("Level",
                                   "Lineage",
