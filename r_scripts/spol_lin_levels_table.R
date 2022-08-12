@@ -86,7 +86,9 @@ for(level in levels){
   
   
   # Pull out the non-zeros for each lineage and store each lineage (col) as a separate list entry
+  # Save full table and a top - X table of results
   lv_list <- list()
+  lv_list_top <- list()
   for(col in col_nms){
     df <- lv_prob[, c("spoligotype", col)]
     df <- df[which(df[, col] > 0), ]
@@ -114,14 +116,11 @@ for(level in levels){
     # Sort
     lv_list[[lin]] <- dplyr::arrange(lv_list[[lin]], desc(prob), desc(freq))
     
-    # Get the top 5 sample proportions
-    top_col_prob <- sort(lv_list[[lin]]$col_prob, decreasing = T)
-    top_col_prob <- top_col_prob[1:5]
-    lv_list[[lin]] <- lv_list[[lin]][which(lv_list[[lin]]$col_prob %in% top_col_prob), ]
-    
   }
   
   # Add the lineages as a col before r-binding
+  
+  # Full list
   lv_list <- lapply(seq(lv_list), function(i){
     lin <- names(lv_list[i])
     lv_list[[i]]$lineage <- rep(lin, nrow(lv_list[[i]])); lv_list[[i]]
@@ -134,8 +133,6 @@ for(level in levels){
   # Tidy
   lv_df$col_prob <- round(lv_df$col_prob*100, 1)
   lv_df <- dplyr::select(lv_df, lineage, spoligotype, SIT, family, prob, freq, col_prob)
-  # Remove dup lins
-  lv_df <- rm_dup_group(lv_df, "lineage")
   
   # names(lv_df) <- c("lineage", "spoligotype", "SIT", "family", "weighted proportion \nof lineage", "n", "%n of lineage")
   
@@ -143,26 +140,16 @@ for(level in levels){
   
 }
 
-# Add the level as a column before r-binding and tidy-up
+# Add the level as a column before r-binding
 spol_lin_levels_table <- lapply(seq(spol_lin_levels_table), function(i){
   level <- names(spol_lin_levels_table[i])
   spol_lin_levels_table[[i]]$level <- rep(level, nrow(spol_lin_levels_table[[i]])); spol_lin_levels_table[[i]]
 })
+
 spol_lin_levels_table <- do.call("rbind", spol_lin_levels_table)
 spol_lin_levels_table <- spol_lin_levels_table %>% select(level, everything())
 spol_lin_levels_table$level <- gsub("lin_level_", "", spol_lin_levels_table$level)
-spol_lin_levels_table <- rm_dup_group(spol_lin_levels_table, "level")
 spol_lin_levels_table$prob <- round(spol_lin_levels_table$prob, 2)
-spol_lin_levels_table$spoligotype <- paste0("\"", spol_lin_levels_table$spoligotype, "\"")
-
-names(spol_lin_levels_table) <- c("Level",
-                                  "Lineage",
-                                  "Spoligotype",
-                                  "SIT",
-                                  "Family",
-                                  "Proportion in lin.",
-                                  "n in lineage",
-                                  "% of lin")
 
 write.csv(spol_lin_levels_table, file = spol_lin_levels_table_file, quote = F, row.names = F)
  

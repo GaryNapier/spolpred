@@ -180,6 +180,10 @@ rm_dup_group <- function(df, col){
   df
 }
 
+pc <- function(x){
+  paste0(round(x, 1), "%")
+}
+
 ```
 
 ```{r variables, echo = F, warning=F, message=F}
@@ -215,18 +219,16 @@ lin3_ggtree <- paste0(results_path, "lin3_ggtree.png")
 lin4_ggtree <- paste0(results_path, "lin4_ggtree.png")
 lin5_6_8_9_La_ggtree <- paste0(results_path, "lin5_6_8_9_La_ggtree.png")
 
-
-
 ```
 
 ```{r read-in-data, echo = F, warning=F, message=F}
 
 spol_data <- read.csv(spol_data_file, header = T, colClasses = c("spoligotype" = "character"))
-spol_lin_levels_table <- read.csv(spol_lin_levels_table_file, colClasses = c("Spoligotype" = "character"))
+spol_lin_levels_table <- read.csv(spol_lin_levels_table_file, colClasses = c("spoligotype" = "character"))
 
 ```
 
-```{r clean-data, echo = F, warning=F, message=F}
+```{r clean-spol-data, echo = F, warning=F, message=F}
 
 # Blank lineages - all 1.2.2.1 apparently
 spol_data$lineage <- ifelse(spol_data$lineage == "", "lineage1.2.2.1", spol_data$lineage)
@@ -263,18 +265,50 @@ exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
 spol_data <- merge(spol_data, exp,
                    by.x = "sample", by.y = "id", all.x = T, 
                    sort = F)
+```
 
-# Tidy main results table
-names(spol_lin_levels_table) <- c("Level",
-                                  "Lineage",
-                                  "Spoligotype",
-                                  "SIT",
-                                  "Family",
-                                  "Proportion in lin.",
-                                  "n in lineage",
-                                  "% of lin")
+```{r clean-results-table, echo = F, warning=F, message=F}
 
-spol_lin_levels_table$Level <- ifelse(is.na(spol_lin_levels_table$Level), "", spol_lin_levels_table$Level)
+# Split into two tables - one with all results, and one top 5 spols by proportion of samples in lin 
+
+spol_lin_levels_split <- split(spol_lin_levels_table, spol_lin_levels_table$level)
+
+spol_lin_levels_top <- list()
+for(level in names(spol_lin_levels_split)){
+  
+  level_data <- spol_lin_levels_split[[level]]
+  level_data_split <- split(level_data, level_data$lineage)
+  
+  lin_list <- list()
+  for(lin in names(level_data_split)){
+    
+      # Get the top 5 sample proportions and save as separate list
+      top_col_prob <- sort(level_data_split[[lin]]$col_prob, decreasing = T)
+      top_col_prob <- top_col_prob[1:5]
+      
+      # print(level_data_split[[lin]][which(level_data_split[[lin]]$col_prob %in% top_col_prob), ])
+      lin_list[[lin]] <- level_data_split[[lin]][which(level_data_split[[lin]]$col_prob %in% top_col_prob), ]
+  }
+  spol_lin_levels_top[[level]] <- do.call("rbind", lin_list)
+}
+spol_lin_levels_top <- do.call("rbind", spol_lin_levels_top)
+
+# Tidy top results table for display
+spol_lin_levels_table_display <- rm_dup_group(spol_lin_levels_top, "lineage")
+spol_lin_levels_table_display <- rm_dup_group(spol_lin_levels_table_display, "level")
+# Need to wrap spol in quotes for otherwise printout is dodgy 
+spol_lin_levels_table_display$spoligotype <- paste0("\"", spol_lin_levels_table_display$spoligotype, "\"")
+
+names(spol_lin_levels_table_display) <- c("Level",
+                                          "Lineage",
+                                          "Spoligotype",
+                                          "SIT",
+                                          "Family",
+                                          "Proportion in lin.",
+                                          "n in lineage",
+                                          "% of lin")
+
+# spol_lin_levels_table$Level <- ifelse(is.na(spol_lin_levels_table$Level), "", spol_lin_levels_table$Level)
 
 ```
 
@@ -290,7 +324,6 @@ n_unique_spol_before_filter <- length(unique(spol_data$spoligotype))
 
 # Keep only those with 5 or more samples per spoligo
 spol_data <- spol_data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
-
 
 ```
 
@@ -312,6 +345,27 @@ names(table_1) <- c("Lineage (level 1)", "n samples", "n unique spoligotypes")
 
 ```
 
+```{r spol-lin-results, echo = F, warning=F, message=F}
+
+spol_lin_levels_table_split <- split(spol_lin_levels_table, spol_lin_levels_table$level)
+
+pure_n_list <- list()
+pure_pc_list <- list()
+med_pc_samps_pure <- list()
+for(level in names(spol_lin_levels_table_split)){
+  
+  x <- spol_lin_levels_table_split[[level]]
+  pure <- subset(x, prob == 1)
+  
+  new_lv_name <- paste0("lv", level)
+  
+  pure_n_list[[new_lv_name]] <- length(pure$spoligotype)
+  pure_pc_list[[new_lv_name]] <- (pure_n_list[[new_lv_name]]/length(x$prob))*100
+  med_pc_samps_pure[[new_lv_name]] <- round(median(pure$col_prob), 2)
+  
+}
+
+```
 
 **Abstract**
 
@@ -336,30 +390,23 @@ Coll (spolpred) [@Coll2012]
 
 ## Results
 
-**Correlation of spoligotypes with lineages**
+**Association of spoligotypes to lineages**
 
-Before filtering spoligotypes:
+Before filtering the spoligotypes to those appearing in five or more samples, our data consisted of `r fmt(n_total_samps_before_filter)` samples, `r fmt(n_unique_lins_before_filter)` unique lineages and sublineages, and `r fmt(n_unique_spol_before_filter)` unique spoligotypes. This filtering step resulted in `r fmt(n_total_samps_after_filter)` samples, `r fmt(n_unique_lins_after_filter)` unique lineages and `r fmt(n_unique_spol_after_filter)` distinct spoligotypes. 
 
-n samples  - `r fmt(n_total_samps_before_filter)`
+The lineage system deveolped in Napier *et al.* (2020) is a hierarchical one consisting of phylogenetic levels. One of the central questions we consider here is at which level spoligotypes are usefully associated to this lineage system. **Figure \@ref(fig:lin-1-7-tree)** clearly shows a high degree of noise among the individual spoligotypes. While some patterns can be discerned between the major lineages (the overall spoligotype pattern of lineage 1 is clearly different to lineage 2 for example), it is less clear how spoligotypes vary with the lower levels of the lineage system (1.1, 1.1.1, 1.1.1.1 etc). 
 
-n unique lineages - `r fmt(n_unique_lins_before_filter)`
+We developed a score for each spoligotype measuring how purely each is associated to a lineage, at each level, weighted by sample size. A score of 1 indicates the spoligotype occurs exclusively in a lineage (see **Methods**). 
 
-n unique spoligotypes - `r fmt(n_unique_spol_before_filter)`
+Although many spoligotypes are exclusive to lineages, in many cases they nevertheless appeared in a relatively small proportion of that lineage's total samples, for example spoligotype 1101111111111111111001111111000010111111111 is only found in lineage 1, but appears in only 17.2% of that lineage's total samples. Conversely, less pure spoligotypes were found which in fact appeared in a large proportion of samples (spoligotype 0000000000000000000000000000000000111111111 scored 0.99 for association to lineage 2, but appears in 91.2% of its samples). Therefore, we include the number of samples with a given spoligotype as well as the percentage of the lineage's total samples in **Table \@ref(tab:spol-lin-levels-table)**. 
 
-After filtering spoligotypes appearing in fewer than five samples and animal strains:
+For simplicity, our results only show the top five most-closely associated spoligotypes for each lineage. These are ordered first by purity - i.e. the "Proportion in lineage score", then by percentage of samples in the lineage with this spoligotype (column "% of lineage"). The full table of results for the unfiltered spoligotypes can be found at github.com/GaryNapier/spolpred/blob/master/results/spol_lin_levels_table.csv
 
-n samples - `r fmt(n_total_samps_after_filter)`
+At the first lineage level (lineages 1-7), there were `r pure_n_list$lv1` (`r pc(pure_pc_list$lv1)`) spoligotypes appearing exclusively in their respective lineages, however the the median percentage of samples with a pure spoligotype across all lineages 1-7 was very low at `r med_pc_samps_pure$lv1`. 
 
-n unique lineages - `r fmt(n_unique_lins_after_filter)`
-
-n unique spoligotypes - `r fmt(n_unique_spol_after_filter)`
-
-
-
-
+The levels show decreasing numbers and proportions of samples with pure spoligotypes (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)), but the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure$lv2`, third level: `r med_pc_samps_pure$lv3`, fourth level: `r med_pc_samps_pure$lv4`). 
 
 ## Methods
-
 
 **Association of spoligotypes to lineages**
 
@@ -369,12 +416,12 @@ At each lineage level, a frequency table was made of samples for each spoligotyp
       
 These calculations yield a measure of how purely associated each spoligotype is to each lineage, at each level. A score of 1 for a spoligotype-lineage combination means a spoligotype only appears in that particular lineage. For example, spoligotype "1001111111111111111111111111000010110001111" scores 1 for lineage 1.1, meaning this spoligotype is only found in this lineage and no others (at the second level of the lineage system). 
 
-Although there were many examples of spoligotypes exclusive to lineages, in many cases they nevertheless appeared in a relatively small proportion of that lineage's total samples, for example spoligotype 1101111111111111111001111111000010111111111 is only found in lineage 1, but appears in 17.2% of that lineage's total samples. On the other hand, less pure spoligotypes were found which in fact appeared in a large proportion of samples (spoligotype 0000000000000000000000000000000000111111111 scored 0.99 for association to lineage 2, but appears in 91.2% of its samples). Therefore, we include the number of samples with a given spoligotype as well as this number as a percentage of the lineage's total samples in **Table \@ref(tab:spol-lin-levels-table)**. 
-
-For simplicity, our results only show the top five most-closely associated spoligotypes for each lineage. These are ordered first by purity - i.e. the "Proportion in lineage score", then by percentage of samples in the lineage with this spoligotype (column "% of lineage").
-
-
 ## Discussion
+
+Although many spoligotypes were shown to be purely associated to a lineage, even to the lowest lineage level, a significant number of these were in a small proportion of the lineage samples. On the other hand, a number of spoligotypes were less predictive of lineage, but appeared in a large proportion of the lineage samples. These latter spoligotypes are of course more likely to be encountered, and so although they have a lower purity score, should be considered useful. 
+
+The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pure_pc_list$lv1` at the first lineage level to `r pure_pc_list$lv4` at the fourth, 
+indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
 
 ## Conclusions
 
@@ -441,7 +488,7 @@ knitr::include_graphics(lin5_6_8_9_La_ggtree)
 
 ```{r table-1-show, echo = F, warning=F}
 
-cap <- "Numbers of samples and unique spoligotypes by main lineage (level 1)"
+cap <- "Numbers of samples and unique spoligotypes by main lineage (level 1) after filtering out spoligotypes occurring in fewer than five samples"
 
 knitr::kable(table_1, row.names = F, caption = cap, format = "pipe")
 
@@ -452,7 +499,7 @@ knitr::kable(table_1, row.names = F, caption = cap, format = "pipe")
 
 cap <- "Correspondence between lineage and spoligotypes at each of the four levels of lineage."
 
-knitr::kable(spol_lin_levels_table, row.names = F, caption = cap, format = "pipe")
+knitr::kable(spol_lin_levels_table_display, row.names = F, caption = cap, format = "pipe")
 
 ```
 
