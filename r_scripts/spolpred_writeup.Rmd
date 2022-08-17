@@ -5,7 +5,7 @@ output:
     fig_caption: yes
     table_caption: yes
     number_sections: no
-    reference_docx: use_template.docx
+    reference_docx: ../../pipeline/word_template/use_template.docx
 bibliography: all_refs.bib
 csl: biomed-central.csl
 ---
@@ -367,17 +367,36 @@ for(level in names(spol_lin_levels_table_split)){
 
 ```
 
+| | |
+| ----------- | ----------- |
+|Gary Napier^1^ |	gary.napier@lshtm.ac.uk|
+|Collaborators in Europe	| |
+|Susana Campino^1^ | susana.campino@lshtm.ac.uk|
+|Collaborators in Europe | |
+|Jody Phelan^1^,^\*^ | jody.phelan@lshtm.ac.uk|
+|Taane G. Clark^1,5,\*^ | taane.clark@lshtm.ac.uk|
+
+1. Faculty of Infectious and Tropical Diseases, London School of Hygiene & Tropical Medicine, WC1E 7HT London, UK
+2. Faculty of Epidemiology and Population Health, London School of Hygiene & Tropical Medicine, WC1E 7HT London, UK
+
+\* joint authors
+
+**Genome Medicine:**
+
 **Abstract**
 
-**Background:** 
+**Background:** Strain-types of *Mycobacterium tuberculosis*, the bacterial pathogen underlying tuberculosis disease (TB), have been associated with drug resistance, transmissibility, virulence, and host-pathogen interactions. Spoligotyping is an established genotyping technique, and historically used to describe strain-types globally. Advances in sequencing technologies have led to whole genome characterisation and determination of barcoding mutations for strain-types through a sub-lineage nomenclature. Given the large number of *M. tuberculosis*, there is a need to update the *in silico* profiling of spoligotypes, and link it to established sub-lineages. 
 
-**Results**: 
+**Results:** 
+    - Updating of spolpred and codes, software
+    - Distributions of spoligotypes globally….
+    - Correlation with new sublineage system.
 
-**Conclusions**: 
+**Conclusions:** 
 
-**URL**: link to new spolpred2
+**URL:** link to new spolpred2
 
-**Keywords**: 
+**Keywords:** *Mycobacterium tuberculosis*, spoligotypes, lineages, phylogeny, spolpred
 
 ## Background
 
@@ -386,7 +405,58 @@ Brudey [@Brudey2006]
 Kamerbeek [@Kamerbeek1997]
 Coll (spolpred) [@Coll2012]
 
+
+Tuberculosis is an infectious disease of high global burden caused by members of the *Mycobacterium tuberculosis* complex (MTBC), which includes XXX
+
+- Different strain-types 
+- phylogeography
+
+Strain identification is crucial to address key epidemiological questions, providing XXXX what information XXXX
+
+Spoligotyping is a fingerprinting PCR techniques [@Kamerbeek1997], which exploits the polymorphism harboured at the direct repeat (DR) locus of MTBC. It is based on the PCR amplification of 43 short unique sequences (termed spacers) contained between well-conserved 36-bp DRs and the subsequent hybridisation of the products onto a membrane with oligonucleotides complementary to each spacer. Since strains vary in the occurrence of spacers, each sample produces a distinctive spot pattern, which is then translated into a numerical code of 8 digits. More than 60 lineages/sub-lineages have been defined based on octal codes, each one normally showing a specific world distribution [@Brudey2006]. 
+
+Advances in sequencing technologies will lead to whole genome bacterial characterisation
+
+
+
+
+Napier *et al.* (2020) [@Napier2020] - accurate transmission and DR characterisation
+The lineage system characterised in Napier *et al.* (2020) [@Napier2020] names MTBC clades in a hierarchy of lineages and sublineages. The first level names the familiar major lineages as 1-9, plus animal strains. Sublineages consist of progressively finer resolution of the phylogenetic tree - for example lineage 1 is sub-divided into two main clades, 1.1 and 1.2, and so on **Figure \@ref(fig:lin-1-7-tree)**. These lineages and sublineages overlap with pre-established lineage systems such as regions of difference (RD), preserving major phylogenetic structural changes at the higher levels. Departing from these other lineage systems Napier *et al.* (2020) identifies finer resolution based on statistical differences in the branch lengths of the MTBC phylogenetic tree. The identifying markers of these clades, rather than being major structural changes of the MTBC genome, are individual (synonymous) SNPs with a fixation index (F~st~) score of 1, meaning that the SNP is unique to the clade. 
+
+One of the central questions we consider here is at which level of the  Napier *et al.* (2020) lineage system spoligotypes are usefully associated. The phylogenetic trees in **Figure \@ref(fig:lin-1-7-tree)** clearly show a high degree of noise among the individual spoligotypes. While some patterns can be discerned between the major lineages (the overall spoligotype pattern of lineage 1 is clearly different to lineage 2 for example), it is less clear how spoligotypes vary with the lower levels of the lineage system (1.1, 1.1.1, 1.1.1.1 etc). We developed a score for each spoligotype measuring how purely each is associated to a lineage, at each level, weighted by sample size. This score is somewhat similar to the F~st~ fixiation index used in  Napier *et al.* (2020), and a score of 1 indicates the spoligotype occurs exclusively in a lineage (see **Methods**). 
+ 
+
+
+
+Spoligotyping is still a technology of choice in some settings, and it is possible to **in silico** predict spoligotypes from SpolPred [@Coll2012]
+
+With a great number of WGS Mtb available, we seek to update the definition of spoligotypes, check consistency with the sub-lineage system [@Napier2020], and assess their global distribution. This is achieved through developing software ("Spolpred2") to *in silico* genotype isolates, to predict the spoligotype from raw sequence reads. 
+
+
+
 ## Implementation
+
+Description of the overall architecture of the software implementation
+
+We have developed a XXXXXX executable to predict the spoligotype octal code from FASTQ files, including those from XXXXXXXX platforms. 
+
+Appearance of all 43 queries is eventually translated into the octal code which is then matched to a spoligotype in the latest version of the international spoligotyping database (SpolDB5).
+
+The software was run on 40k Mtb
+
+Compared to the new sublineage system
+
+## Methods
+
+**Association of spoligotypes to lineages**
+
+As there were many spoligotypes in low numbers of samples and therefore offering little predictive power, those appearing in fewer than five samples were excluded. Since we were interested in the strength of association between spoligotypes and the various levels of the Napier *et al.* (2020) lineage system, the lineages were parsed into a hierarchy for each round of analysis. For example, the first level analysed the association between each spoligotype and the main *Mtb* lineages 1-7. Next was the association between each spoligotype and the second level, represented by lineages 1.1, 1.2, 2.1, 2.2, etc. This hierarchy consisted of four levels, the last being e.g. lineage 1.1.1.1. As the system is hierarchical, any spoligotypes still appearing in samples at a higher level were included in the association calculations. Hence the results in **Table \@ref(tab:spol-lin-levels-table)** show for example lineage 3 appearing along with lineage 3.1 at the second lineage level. 
+
+To assess how closely associated each spoligotype is to each lineage, at each level, a score was developed analagous to the fixation index F~st~ [@Weir1984]. This statistic assigns a score of 1 if an allele is fixed in a given population, and is not present outside that group. Similarly, the spoligotype score here assigns a score of 1 if a spoligotype is only found in a given lineage, and anything less than 1 indicates that the spoligotype is found in at least one other sample belonging to another lineage. 
+
+Our calculation proceeded as follows: At each lineage level, a frequency table was made of samples for each spoligotype by lineage. For each lineage, the sample frequencies were first converted to a proportion of the total lineage sample size in order to weight the final association score by sample size. Then, for each spoligotype, this sample size proportion was calculated as a proportion of occurrences across each lineage (column "Proportion in lineage" in **Table \@ref(tab:spol-lin-levels-table)**).
+      
+These calculations yield a measure of how purely associated each spoligotype is to each lineage, at each level. A score of 1 for a spoligotype-lineage combination means a spoligotype only appears in that particular lineage. For example, spoligotype 1001111111111111111111111111000010110001111 scores 1 for lineage 1.1, meaning this spoligotype is only found in this lineage and no others (at the second level of the lineage system). 
 
 ## Results
 
@@ -394,27 +464,13 @@ Coll (spolpred) [@Coll2012]
 
 Before filtering the spoligotypes to those appearing in five or more samples, our data consisted of `r fmt(n_total_samps_before_filter)` samples, `r fmt(n_unique_lins_before_filter)` unique lineages and sublineages, and `r fmt(n_unique_spol_before_filter)` unique spoligotypes. This filtering step resulted in `r fmt(n_total_samps_after_filter)` samples, `r fmt(n_unique_lins_after_filter)` unique lineages and `r fmt(n_unique_spol_after_filter)` distinct spoligotypes. 
 
-The lineage system deveolped in Napier *et al.* (2020) is a hierarchical one consisting of phylogenetic levels. One of the central questions we consider here is at which level spoligotypes are usefully associated to this lineage system. **Figure \@ref(fig:lin-1-7-tree)** clearly shows a high degree of noise among the individual spoligotypes. While some patterns can be discerned between the major lineages (the overall spoligotype pattern of lineage 1 is clearly different to lineage 2 for example), it is less clear how spoligotypes vary with the lower levels of the lineage system (1.1, 1.1.1, 1.1.1.1 etc). 
+Many spoligotypes were found to be exclusive to lineages at each level, however in many cases they nevertheless appeared in a relatively small proportion of that lineage's total samples, for example spoligotype 1101111111111111111001111111000010111111111 is only found in lineage 1, but appears in only 17.2% of that lineage's total samples. Conversely, less pure spoligotypes were found which in fact appeared in a large proportion of samples (spoligotype 0000000000000000000000000000000000111111111 scored 0.99 for association to lineage 2, but appears in 91.2% of its samples). Therefore, we include the number of samples with a given spoligotype as well as the percentage of the lineage's total samples in **Table \@ref(tab:spol-lin-levels-table)**. 
 
-We developed a score for each spoligotype measuring how purely each is associated to a lineage, at each level, weighted by sample size. A score of 1 indicates the spoligotype occurs exclusively in a lineage (see **Methods**). 
-
-Although many spoligotypes are exclusive to lineages, in many cases they nevertheless appeared in a relatively small proportion of that lineage's total samples, for example spoligotype 1101111111111111111001111111000010111111111 is only found in lineage 1, but appears in only 17.2% of that lineage's total samples. Conversely, less pure spoligotypes were found which in fact appeared in a large proportion of samples (spoligotype 0000000000000000000000000000000000111111111 scored 0.99 for association to lineage 2, but appears in 91.2% of its samples). Therefore, we include the number of samples with a given spoligotype as well as the percentage of the lineage's total samples in **Table \@ref(tab:spol-lin-levels-table)**. 
-
-For simplicity, our results only show the top five most-closely associated spoligotypes for each lineage. These are ordered first by purity - i.e. the "Proportion in lineage score", then by percentage of samples in the lineage with this spoligotype (column "% of lineage"). The full table of results for the unfiltered spoligotypes can be found at github.com/GaryNapier/spolpred/blob/master/results/spol_lin_levels_table.csv
+For simplicity, our results in **Table \@ref(tab:spol-lin-levels-table)** only show the top five most-closely associated spoligotypes for each lineage. These are ordered first by purity - i.e. the "Proportion in lineage score", then by percentage of samples in the lineage with this spoligotype (column "% of lineage"). The full table of results for the unfiltered spoligotypes can be found at github.com/GaryNapier/spolpred/blob/master/results/spol_lin_levels_table.csv
 
 At the first lineage level (lineages 1-7), there were `r pure_n_list$lv1` (`r pc(pure_pc_list$lv1)`) spoligotypes appearing exclusively in their respective lineages, however the the median percentage of samples with a pure spoligotype across all lineages 1-7 was very low at `r med_pc_samps_pure$lv1`. 
 
 The levels show decreasing numbers and proportions of samples with pure spoligotypes (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)), but the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure$lv2`, third level: `r med_pc_samps_pure$lv3`, fourth level: `r med_pc_samps_pure$lv4`). 
-
-## Methods
-
-**Association of spoligotypes to lineages**
-
-As there were many spoligotypes in low numbers of samples and therefore offering little predictive power, those appearing in fewer than five samples were excluded. Since we were interested in the strength of association between spoligotypes and the various levels of the Napier *et al.* lineage system, the lineages were parsed into a hierarchy for each round of analysis. For example, the first level analysed the association between each spoligotype and the main *Mtb* lineages 1-7. Next was the association between each spoligotype and the second level, represented by lineages 1.1, 1.2, 2.1, 2.2, etc. This hierarchy consisted of four levels, the last being e.g. lineage 1.2.1.2. As the system is hierarchical, any spoligotypes still appearing in samples at a higher level were included in the association calculations. Hence the results in **Table \@ref(tab:spol-lin-levels-table)** show for example lineage 3 appearing along with lineage 3.1 at the second lineage level. 
-
-At each lineage level, a frequency table was made of samples for each spoligotype by lineage. For each lineage, the sample frequencies were first converted to a proportion of the total lineage sample size in order to weight the final association score by sample size. Then, for each spoligotype, this sample size proportion was calculated as a proportion of occurrences across each lineage (column "Proportion in lineage" in **Table \@ref(tab:spol-lin-levels-table)**).
-      
-These calculations yield a measure of how purely associated each spoligotype is to each lineage, at each level. A score of 1 for a spoligotype-lineage combination means a spoligotype only appears in that particular lineage. For example, spoligotype "1001111111111111111111111111000010110001111" scores 1 for lineage 1.1, meaning this spoligotype is only found in this lineage and no others (at the second level of the lineage system). 
 
 ## Discussion
 
@@ -446,6 +502,7 @@ The authors declare that they have no competing interests
 GN is funded by an BBSRC-LiDO PhD studentship. JEP is funded by a Newton Institutional Links Grant (British Council, no. 261868591). TGC is funded by the Medical Research Council UK (Grant no. MR/M01360X/1, MR/N010469/1, MR/R025576/1, and MR/R020973/1). SC is funded by Medical Research Council UK grants (ref. MR/M01360X/1, MR/R025576/1, and MR/R020973/1). The authors declare no conflicts of interest. The funders had no role in the design of the study and collection, analysis, and interpretation of data and in writing the manuscript should be declared.
 
 **Authors' contributions**
+XXX, JEP and TGC conceived and directed the project. XXXXXXX contributed data. GN performed bioinformatic and statistical analyses under the supervision of SC, JEP and TGC. GN, SC, JEP and TGC interpreted results. GN wrote the first draft of the manuscript with inputs from JEP and TGC. All authors commented and edited on various versions of the draft manuscript and approved the final version. GN, SC, JEP, and TGC compiled the final manuscript. 
 
 **Acknowledgements**
 

@@ -51,7 +51,7 @@ spol_data <- select(spol_data, sample, lineage, spoligotype)
 # animal <- subset(spol_data, grepl("La", lineage))
 spol_data <- subset(spol_data, !(grepl("La", lineage)))
 
-# Expand lineages, rbind animal back in and merge
+# Expand lineages and merge
 exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
 # data <- merge(rbind(spol_data, animal), exp,
 #               by.x = "sample", by.y = "id", all.x = T, 
@@ -66,7 +66,7 @@ spol_data <- spol_data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.fr
 
 levels <- c("lin_level_1", "lin_level_2", "lin_level_3", "lin_level_4")
 
-# Loop over levels and calcualate top spoligotypes for each lin
+# Loop over levels and calculate top spoligotypes for each lin
 spol_lin_levels_table <- list()
 for(level in levels){
   # Make freq table for the level
