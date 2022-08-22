@@ -93,6 +93,7 @@ itol_templates_path <- "../pipeline/itol_templates/"
 
 # Data
 spoligo_lineage_full_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
+family_lookup_file <- paste0(data_path, "family_lookup.csv")
 # Trees
 all_lins_treefile <- paste0(newick_path, "all_lineages.treefile")
 l2_treefile <- paste0(newick_path, "grouped_samples_lineage2.treefile")
@@ -112,6 +113,7 @@ itol_outfile <- paste0(results_path, "itol_all_spol_binary.txt")
 
 spoligo_lineage_full <- read.csv(spoligo_lineage_full_file, header = T, 
                                    colClasses = c("spoligotype" = "character"))
+family_lookup <- read.csv(family_lookup_file)
 all_tree <- midpoint.root(read.tree(all_lins_treefile))
 l2_tree <- midpoint.root(read.tree(l2_treefile))
 l3_tree <- midpoint.root(read.tree(l3_treefile))
@@ -153,14 +155,11 @@ data$max_lin <- ifelse(grepl("M", data$lineage), data$lineage, data$max_lin)
 # Remove 0000000000000000000000000000000000000000000 - error apparently
 data <- subset(data, !(spoligotype == "0000000000000000000000000000000000000000000"))
 
-# Add rownames for plotting
-rownames(data) <- data$sample
-
 # Add binary cols - convert binary spoligotype 00101 etc to columns - for both itol and ggtree
 spol_data <- get_binary_cols(data, "spoligotype", "s")
 
 # Clean up trees - only include samples which are in the spol dataset
-all_tree <- ape::keep.tip(all_tree, intersect(spol_data$sample))
+all_tree <- ape::keep.tip(all_tree, intersect(spol_data$sample, all_tree$tip.label))
 all_tree <- ape::drop.tip(all_tree, c("ERR2517175", "ERR2486961", "SRR5067351")) # These samples not colouring for some reason.
 l2_tree <- ape::keep.tip(l2_tree, intersect(spol_data$sample, l2_tree$tip.label))
 l3_tree <- ape::keep.tip(l3_tree, intersect(spol_data$sample, l3_tree$tip.label))
@@ -172,14 +171,26 @@ l5_6_8_9_La_tree <- ape::keep.tip(l5_6_8_9_La_tree, intersect(spol_data$sample, 
 set.seed(123)
 l4_tree <- keep.tip(l4_tree, sample(l4_tree$tip.label, floor(length(l4_tree$tip.label)*0.5)))
 
-# ggtree ----
+# Family
+
+# Clean family
+spol_data$family <- ifelse(spol_data$family == "", "Unknown", spol_data$family)
+
+# Merge in family group
+spol_data <- merge(spol_data, select(family_lookup, family, family_group), by = "family", all.x = T)
+
+# ggtree data ----
+
+# Add rownames for plotting
+rownames(spol_data) <- spol_data$sample
 
 # subset data by relevant cols - i.e. remove lineage and original spoligotype cols for ggplot
 lin_lv1_data_ggplot <- select(spol_data, lin_level_1)
 lin_lv2_data_ggplot <- select(spol_data, lin_level_2)
-spol_data_ggplot <- select(spol_data, -(sample:max_lin))
+spol_data_ggplot <- select(spol_data, s1:s43)
+family_data <- select(spol_data, family_group)
 
-# Colours
+# Colours ----
 
 lin_colours_lv_1 <- ggtree_strip_cols(lin_lv1_data_ggplot$lin_level_1)
 
@@ -234,16 +245,24 @@ l5_6_8_9_La_lv2_cols <- c(lv2_cols_list$lineage5,
                       lv2_cols_list$lineageLa2, 
                       lv2_cols_list$lineageLa3)
 
+
+# Family cols
+
+family_cols <- unique(family_lookup$colour)
+names(family_cols) <- unique(family_lookup$family_group)
+
 # Plot ----
 
-do_tree <- "all"
+do_tree <- "4"
 
 # Set up ggtree parameters 
-width <- 0.05
-font_sz <- 3
-line_sz <- 0.1
+width <- 0.05 # Heatmap width
+font_sz <- 3 
+line_sz <- 0.1 
 angle <- 30
-os <- 0.0010
+os <- 0.0010 # Offset
+family_os <- os*1.5
+spol_os <- os*3.1
 
 png_width <- 1000/5
 png_height <- 1000/5
@@ -253,6 +272,7 @@ png_height <- 1000/5
 if(do_tree == "2"){
   
   l2_ggtree <- ggtree(l2_tree, size = line_sz, layout = "circular")
+  # Lin lv2
   l2_ggtree <- gheatmap(l2_ggtree, lin_lv2_data_ggplot,
                         color = NA, 
                         width = width,
@@ -263,8 +283,20 @@ if(do_tree == "2"){
   
   l2_ggtree <- l2_ggtree + ggnewscale::new_scale_fill()
   
+  # Family
+  l2_ggtree <- gheatmap(l2_ggtree, family_data,
+                        color = NA, 
+                        width = width,
+                        offset = family_os,
+                        colnames = F)+
+    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
+    labs(fill = "Family")
+  
+  l2_ggtree <- l2_ggtree + ggnewscale::new_scale_fill()
+  
+  # Spoligotype
   l2_ggtree <- gheatmap(l2_ggtree, spol_data_ggplot,
-                        offset = os+0.0020,
+                        offset = spol_os,
                         color = NA,
                         low="white",
                         high="black",
@@ -280,6 +312,8 @@ if(do_tree == "2"){
 
 }else if(do_tree == "3"){
   l3_ggtree <- ggtree(l3_tree, size = line_sz, layout = "circular")
+  
+  # Lineage
   l3_ggtree <- gheatmap(l3_ggtree, lin_lv2_data_ggplot,
                         color = NA, 
                         width = width,
@@ -290,8 +324,20 @@ if(do_tree == "2"){
   
   l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
   
+  # Family
+  l3_ggtree <- gheatmap(l3_ggtree, family_data,
+                        color = NA, 
+                        width = width,
+                        offset = family_os,
+                        colnames = F)+
+    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
+    labs(fill = "Family")
+  
+  l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
+  
+  # Spoligotype
   l3_ggtree <- gheatmap(l3_ggtree, spol_data_ggplot,
-           offset = os+0.0020,
+           offset = spol_os,
            color = NA,
            low="white",
            high="black",
@@ -308,27 +354,90 @@ if(do_tree == "2"){
   # L4
   
   l4_ggtree <- ggtree(l4_tree, size = line_sz, layout = "circular")
+  
+  # Lineage
   l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot,
                         color = NA,
-                        width = 0.2,
+                        width = width*2,
                         offset = 0,
                         colnames = F)+
     scale_fill_manual(values = l4_lv2_cols, breaks = names(l4_lv2_cols) )+
     labs(fill = "Subineage")
+
+  l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
+
+  # Family
+  l4_ggtree_no_leg <- gheatmap(l4_ggtree, family_data,
+                        color = NA,
+                        width = width*2,
+                        offset = family_os*0.75,
+                        colnames = F)+
+    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
+    labs(fill = "Family")+
+    theme(legend.direction = "vertical", legend.box = "horizontal") +
+    theme(legend.position = "none")
+  
+  
+  
+  
+
+  l4_ggtree <- ggtree(l4_tree, size = line_sz, layout = "circular")
+  
+  # Lineage
+  l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot,
+                        color = NA,
+                        width = width*2,
+                        offset = 0,
+                        colnames = F)+
+    scale_fill_manual(values = l4_lv2_cols, breaks = names(l4_lv2_cols) )+
+    labs(fill = "Subineage")+
+    theme(legend.direction = "vertical", legend.box = "vertical")
+  
+  leg1 <- get_legend(l4_ggtree)
   
   l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
   
-  l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot,
-                        offset = os+0.0020,
-                        color = NA,
-                        low="white",
-                        high="black",
-                        colnames = F) +
-    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-    labs(fill = "Spoligotype")+
-    ggtitle("Lineage 4")
+  # Family
+  l4_ggtree <- gheatmap(l4_ggtree, family_data,
+                               color = NA,
+                               width = width*2,
+                               offset = family_os*0.75,
+                               colnames = F)+
+    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
+    labs(fill = "Family")+
+    theme(legend.direction = "vertical", legend.box = "vertical")
   
-  # ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree)
+  leg2 <- get_legend(l4_ggtree)
+  
+
+  # l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
+  # 
+  # # Spoligotype
+  # l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot,
+  #                       offset = spol_os*0.75,
+  #                       color = NA,
+  #                       low="white",
+  #                       high="black",
+  #                       colnames = F) +
+  #   scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+  #   labs(fill = "Spoligotype")+
+  #   ggtitle("Lineage 4")
+  
+  blank_p <- plot_spacer() + theme_void()
+  
+  leg12 <- plot_grid(leg1, leg2,
+                     blank_p,
+                     nrow = 3)
+  
+  plot_grid(l4_ggtree_no_leg,
+            leg12,
+                       ncol = 2,
+                       align = "h",
+                       axis = "t",
+                       rel_widths = c(1, 0.3))
+  
+
+  ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree, width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin4_ggtree.svg"), plot = l4_ggtree)
 
 }else if(do_tree == "1_7"){
