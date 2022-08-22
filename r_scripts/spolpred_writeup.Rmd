@@ -209,9 +209,7 @@ results_path <- "../results/"
 ```{r files, echo = F, warning=F, message=F}
 
 spol_data_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
-stopifnot(file.exists(spol_data_file))
 spol_lin_levels_table_file <- paste0(results_path, "spol_lin_levels_table.csv")
-stopifnot(file.exists(spol_lin_levels_table_file))
 
 lin1_7_ggtree <- paste0(results_path, "lin1_7_ggtree.png")
 lin2_ggtree <- paste0(results_path, "lin2_ggtree.png")
@@ -337,11 +335,25 @@ n_unique_spol_after_filter <- length(unique(spol_data$spoligotype))
 
 ```{r table-1, echo = F, warning=F, message=F}
 
-n_pivot <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_samp', value.var = "sample", fun.aggregate = len_uniq)
-spol_pivot <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_spol', value.var = "spoligotype", fun.aggregate = len_uniq)
-table_1 <- data.frame(cbind(to_table(n_pivot, "col"), to_table(spol_pivot, "col")))
-table_1 <- dplyr::select(table_1, -(lin_level_1.1),  -(Total), -(Total.1))
-names(table_1) <- c("Lineage (level 1)", "n samples", "n unique spoligotypes")
+n_pivot_lv1 <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_samp', value.var = "sample", fun.aggregate = len_uniq)
+spol_pivot_lv1 <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_spol', value.var = "spoligotype", fun.aggregate = len_uniq)
+
+n_pivot_lv2 <- reshape2::dcast(spol_data, lin_level_2 ~ 'n_samp', value.var = "sample", fun.aggregate = len_uniq)
+spol_pivot_lv2 <- reshape2::dcast(spol_data, lin_level_2 ~ 'n_spol', value.var = "spoligotype", fun.aggregate = len_uniq)
+
+table_1_lv1 <- data.frame(cbind(to_table(n_pivot_lv1, "col"), to_table(spol_pivot_lv1, "col")))
+table_1_lv1 <- dplyr::select(table_1_lv1, -(lin_level_1.1),  -(Total), -(Total.1))
+table_1_lv1 <- data.frame(cbind(level = rep("1", nrow(table_1_lv1)), table_1_lv1))
+
+table_1_lv2 <- data.frame(cbind(to_table(n_pivot_lv2, "col"), to_table(spol_pivot_lv2, "col")))
+table_1_lv2 <- dplyr::select(table_1_lv2, -(lin_level_2.1),  -(Total), -(Total.1))
+table_1_lv2 <- data.frame(cbind(level = rep("2", nrow(table_1_lv2)), table_1_lv2))
+
+table_1 <- rbind_force(table_1_lv1, table_1_lv2)
+
+table_1 <- rm_dup_group(table_1, "level")
+
+names(table_1) <- c("Level", "Lineage", "n samples", "n unique spoligotypes")
 
 ```
 
@@ -420,7 +432,6 @@ Advances in sequencing technologies will lead to whole genome bacterial characte
 
 
 
-Napier *et al.* (2020) [@Napier2020] - accurate transmission and DR characterisation
 The lineage system characterised in Napier *et al.* (2020) [@Napier2020] names MTBC clades in a hierarchy of lineages and sublineages. The first level names the familiar major lineages as 1-9, plus animal strains. Sublineages consist of progressively finer resolution of the phylogenetic tree - for example lineage 1 is sub-divided into two main clades, 1.1 and 1.2, and so on **Figure \@ref(fig:lin-1-7-tree)**. These lineages and sublineages overlap with pre-established lineage systems such as regions of difference (RD), preserving major phylogenetic structural changes at the higher levels. Departing from these other lineage systems Napier *et al.* (2020) identifies finer resolution based on statistical differences in the branch lengths of the MTBC phylogenetic tree. The identifying markers of these clades, rather than being major structural changes of the MTBC genome, are individual (synonymous) SNPs with a fixation index (F~st~) score of 1, meaning that the SNP is unique to the clade. 
 
 One of the central questions we consider here is at which level of the  Napier *et al.* (2020) lineage system spoligotypes are usefully associated. The phylogenetic trees in **Figure \@ref(fig:lin-1-7-tree)** clearly show a high degree of noise among the individual spoligotypes. While some patterns can be discerned between the major lineages (the overall spoligotype pattern of lineage 1 is clearly different to lineage 2 for example), it is less clear how spoligotypes vary with the lower levels of the lineage system (1.1, 1.1.1, 1.1.1.1 etc). We developed a score for each spoligotype measuring how purely each is associated to a lineage, at each level, weighted by sample size. This score is somewhat similar to the F~st~ fixiation index used in  Napier *et al.* (2020), and a score of 1 indicates the spoligotype occurs exclusively in a lineage (see **Methods**). 
@@ -476,7 +487,7 @@ The levels show decreasing numbers and proportions of samples with pure spoligot
 
 Although many spoligotypes were shown to be purely associated to a lineage, even to the lowest lineage level, a significant number of these were in a small proportion of the lineage samples. On the other hand, a number of spoligotypes were less predictive of lineage, but appeared in a large proportion of the lineage samples. These latter spoligotypes are of course more likely to be encountered, and so although they have a lower purity score, should be considered useful. 
 
-The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pure_pc_list$lv1` at the first lineage level to `r pure_pc_list$lv4` at the fourth, 
+The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pure_pc_list$lv1`% at the first lineage level to `r pure_pc_list$lv4`% at the fourth, 
 indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
 
 ## Conclusions
@@ -545,7 +556,7 @@ knitr::include_graphics(lin5_6_8_9_La_ggtree)
 
 ```{r table-1-show, echo = F, warning=F}
 
-cap <- "Numbers of samples and unique spoligotypes by main lineage (level 1) after filtering out spoligotypes occurring in fewer than five samples"
+cap <- "Numbers of samples and unique spoligotypes for the first two lineage levels after filtering out spoligotypes occurring in fewer than five samples"
 
 knitr::kable(table_1, row.names = F, caption = cap, format = "pipe")
 
