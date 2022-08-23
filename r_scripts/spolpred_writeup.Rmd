@@ -184,6 +184,35 @@ pc <- function(x){
   paste0(round(x, 1), "%")
 }
 
+list_to_df_group <- function(lst){
+  # lst <- list(X = 1:5, Y = LETTERS[1:5])
+  # $X
+  # [1]  1  2  3  4  5 
+  # $Y
+  # [1] "A" "B" "C" "D" "E"
+  # list_to_df_group(lst)
+  #      group values
+  # 1      X      1
+  # 2      X      2
+  # 3      X      3
+  # 4      X      4
+  # 5      X      5
+  # 6      Y      A
+  # 7      Y      B
+  # 8      Y      C
+  # 9      Y      D
+  # 10     Y      E
+  
+  df_list <- list()
+  for(i in seq(lst)){
+    values_vect <- lst[[i]]
+    nm <- names(lst[i])
+    group_vect <- rep(nm, length(values_vect))
+    df_list[[i]] <- data.frame(group = group_vect, values = values_vect)
+  }
+  do.call("rbind", df_list)
+}
+
 ```
 
 ```{r variables, echo = F, warning=F, message=F}
@@ -359,25 +388,70 @@ names(table_1) <- c("Level", "Lineage", "n samples", "n unique spoligotypes")
 
 ```{r spol-lin-results, echo = F, warning=F, message=F}
 
+# Split out by lin level
 spol_lin_levels_table_split <- split(spol_lin_levels_table, spol_lin_levels_table$level)
 
-pure_n_list <- list()
-pure_pc_list <- list()
-med_pc_samps_pure <- list()
+# Make lists to store stats for each level
+pure_n_list <- list() # N spols pure at each level
+pure_pc_list <- list() # Overall % of spols pure at each level
+pc_samps_pure_vect_list <- data.frame() # Among the pure spols, take the vector of porportion of samps with each spol (col_prob col)
+med_pc_samps_pure_list <- list() # Take the median of this vector
+
 for(level in names(spol_lin_levels_table_split)){
   
-  x <- spol_lin_levels_table_split[[level]]
-  pure <- subset(x, prob == 1)
+  # Table of all the spoligotypes, pure and unpure
+  all_spols_at_level <- spol_lin_levels_table_split[[level]]
   
+  # Subset the pure ones
+  pure <- subset(all_spols_at_level, prob == 1)
+  
+  # Add 'lv' to make it easier to subset lists later
   new_lv_name <- paste0("lv", level)
   
+  # N spols pure at a level
   pure_n_list[[new_lv_name]] <- length(pure$spoligotype)
-  pure_pc_list[[new_lv_name]] <- (pure_n_list[[new_lv_name]]/length(x$prob))*100
-  med_pc_samps_pure[[new_lv_name]] <- round(median(pure$col_prob), 2)
+  # What % of all the spols at the level are pure?
+  pure_pc_list[[new_lv_name]] <- (pure_n_list[[new_lv_name]]/length(all_spols_at_level$spoligotype))*100
+  
+  # Each pure spol at the level - get the % of samples with that spol
+  pc_samps_pure_vect_list[[new_lv_name]] <- pure$col_prob
+  # Save the median of this value
+  med_pc_samps_pure_list[[new_lv_name]] <- round(median(pure$col_prob), 2)
   
 }
 
 ```
+
+```{r spol-lin-results-plot, echo = F, warning=F, message=F}
+
+spol_lin_levels_table$col_prob_log10 <- log10(spol_lin_levels_table$col_prob)
+spol_lin_levels_table$col_prob_log10 <- ifelse(is.infinite(spol_lin_levels_table$col_prob_log10), 
+                                               min(spol_lin_levels_table$col_prob_log10[!is.infinite(spol_lin_levels_table$col_prob_log10)]),
+                                               spol_lin_levels_table$col_prob_log10)
+
+pure_pc_df <- list_to_df_group(pure_pc_list)
+pure_pc_df$group <- 1:4
+
+y_A <- seq(0, 2, 0.5)
+y_B <- seq(0, 10, 2) 
+y_C <- seq(20, 50, 10) 
+y_D <- seq(60, 100, 20)
+y_ax <- c(y_A, y_B, y_C, y_D)
+spol_lin_results_plot <- ggplot()+
+  geom_boxplot(data = spol_lin_levels_table, aes(x = as.factor(level), y = col_prob))+
+  geom_line(data = pure_pc_df, aes(x=group, y=values, group=1), color="red", size = 1)+
+  geom_point(data = pure_pc_df, aes(x=group, y=values), size = 3, colour = "blue")+
+  xlab("Lineage level")+
+  ylab("Percentage")+
+  scale_y_log10(breaks = y_ax)+
+  theme_bw()
+spol_lin_results_plot_file <- "../results/spol_lin_results_plot.png"
+
+ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 1100/5, height = 700/5, units = "mm")
+
+
+```
+
 
 | | |
 | ----------- | ----------- |
@@ -479,16 +553,15 @@ Many spoligotypes were found to be exclusive to lineages at each level, however 
 
 For simplicity, our results in **Table \@ref(tab:spol-lin-levels-table)** only show the top five most-closely associated spoligotypes for each lineage. These are ordered first by purity - i.e. the "Proportion in lineage score", then by percentage of samples in the lineage with this spoligotype (column "% of lineage"). The full table of results for the unfiltered spoligotypes can be found at github.com/GaryNapier/spolpred/blob/master/results/spol_lin_levels_table.csv
 
-At the first lineage level (lineages 1-7), there were `r pure_n_list$lv1` (`r pc(pure_pc_list$lv1)`) spoligotypes appearing exclusively in their respective lineages, however the the median percentage of samples with a pure spoligotype across all lineages 1-7 was very low at `r med_pc_samps_pure$lv1`. 
+At the first lineage level (lineages 1-7), there were `r pure_n_list$lv1` (`r pc(pure_pc_list$lv1)`) spoligotypes appearing exclusively in their respective lineages, however the the median percentage of samples with a pure spoligotype across all lineages 1-7 was very low at `r med_pc_samps_pure_list$lv1`. 
 
-The levels show decreasing numbers and proportions of samples with pure spoligotypes (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)), but the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure$lv2`, third level: `r med_pc_samps_pure$lv3`, fourth level: `r med_pc_samps_pure$lv4`). 
+The levels show decreasing numbers and proportions of samples with pure spoligotypes (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)), but the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure_list$lv2`, third level: `r med_pc_samps_pure_list$lv3`, fourth level: `r med_pc_samps_pure_list$lv4`) (**Figure `r spol-lin-results-plot-display`**). 
 
 ## Discussion
 
 Although many spoligotypes were shown to be purely associated to a lineage, even to the lowest lineage level, a significant number of these were in a small proportion of the lineage samples. On the other hand, a number of spoligotypes were less predictive of lineage, but appeared in a large proportion of the lineage samples. These latter spoligotypes are of course more likely to be encountered, and so although they have a lower purity score, should be considered useful. 
 
-The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pure_pc_list$lv1`% at the first lineage level to `r pure_pc_list$lv4`% at the fourth, 
-indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
+The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pure_pc_list$lv1`% at the first lineage level to `r pure_pc_list$lv4`% at the fourth, indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
 
 ## Conclusions
 
@@ -518,6 +591,15 @@ XXX, JEP and TGC conceived and directed the project. XXXXXXX contributed data. G
 **Acknowledgements**
 
 ## FIGURES
+
+Boxplot: Aggregated percentages of samples with each spoligotype, within each lineage; Line: Total percentage of 'pure' spoligotypes.
+
+```{r spol-lin-results-plot-display, echo = F, warning=F, message=F, fig.cap = "Boxplot: Aggregated percentages of samples within each lineage with 'pure' spoligotypes; Line: Total percentage of 'pure' spoligotypes."}
+  
+knitr::include_graphics(spol_lin_results_plot_file)
+
+```
+
 
 ```{r lin-1-7-tree, echo = F, warning=F, fig.cap = "Phylogenetic trees showing lineage and spoligotypes."}
 
