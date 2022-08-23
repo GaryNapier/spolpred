@@ -253,7 +253,7 @@ names(family_cols) <- unique(family_lookup$family_group)
 
 # Plot ----
 
-do_tree <- "4"
+do_tree <- "1_7"
 
 # Set up ggtree parameters 
 width <- 0.05 # Heatmap width
@@ -356,86 +356,27 @@ if(do_tree == "2"){
   l4_ggtree <- ggtree(l4_tree, size = line_sz, layout = "circular")
   
   # Lineage
-  l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot,
-                        color = NA,
-                        width = width*2,
-                        offset = 0,
-                        colnames = F)+
+  l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot, color = NA, width = width*2, offset = 0, colnames = F)+
     scale_fill_manual(values = l4_lv2_cols, breaks = names(l4_lv2_cols) )+
     labs(fill = "Subineage")
 
   l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
 
   # Family
-  l4_ggtree_no_leg <- gheatmap(l4_ggtree, family_data,
-                        color = NA,
-                        width = width*2,
-                        offset = family_os*0.75,
-                        colnames = F)+
+  l4_ggtree <- gheatmap(l4_ggtree, family_data, color = NA, width = width*2, offset = family_os*0.75, colnames = F)+
     scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
-    labs(fill = "Family")+
-    theme(legend.direction = "vertical", legend.box = "horizontal") +
-    theme(legend.position = "none")
-  
-  
-  
-  
-
-  l4_ggtree <- ggtree(l4_tree, size = line_sz, layout = "circular")
-  
-  # Lineage
-  l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot,
-                        color = NA,
-                        width = width*2,
-                        offset = 0,
-                        colnames = F)+
-    scale_fill_manual(values = l4_lv2_cols, breaks = names(l4_lv2_cols) )+
-    labs(fill = "Subineage")+
-    theme(legend.direction = "vertical", legend.box = "vertical")
-  
-  leg1 <- get_legend(l4_ggtree)
+    labs(fill = "Family")
   
   l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
-  
-  # Family
-  l4_ggtree <- gheatmap(l4_ggtree, family_data,
-                               color = NA,
-                               width = width*2,
-                               offset = family_os*0.75,
-                               colnames = F)+
-    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
-    labs(fill = "Family")+
-    theme(legend.direction = "vertical", legend.box = "vertical")
-  
-  leg2 <- get_legend(l4_ggtree)
-  
 
-  # l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
-  # 
-  # # Spoligotype
-  # l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot,
-  #                       offset = spol_os*0.75,
-  #                       color = NA,
-  #                       low="white",
-  #                       high="black",
-  #                       colnames = F) +
-  #   scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-  #   labs(fill = "Spoligotype")+
-  #   ggtitle("Lineage 4")
-  
-  blank_p <- plot_spacer() + theme_void()
-  
-  leg12 <- plot_grid(leg1, leg2,
-                     blank_p,
-                     nrow = 3)
-  
-  plot_grid(l4_ggtree_no_leg,
-            leg12,
-                       ncol = 2,
-                       align = "h",
-                       axis = "t",
-                       rel_widths = c(1, 0.3))
-  
+  # Spoligotype
+  l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot, offset = spol_os*0.75, color = NA, low="white", high="black", colnames = F) +
+    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
+    labs(fill = "Spoligotype")+
+    ggtitle("Lineage 4")+
+    # theme(legend.direction = "vertical", legend.box = "horizontal")
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))
 
   ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree, width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin4_ggtree.svg"), plot = l4_ggtree)
@@ -446,9 +387,10 @@ if(do_tree == "2"){
 
   l1_7_ggtree <- ggtree(l1_7_tree, size = line_sz, layout = "circular")
   
+  # Lineage
   l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
                           color = NA,
-                          width = 0.1,
+                          width = width,
                           offset = 0,
                           colnames = F)+
     scale_fill_manual(values = lin_colours_lv_1[c("1", "7")], 
@@ -457,26 +399,41 @@ if(do_tree == "2"){
   
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
   
+  # Sublineage
   l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv2_data_ggplot,
                           color = NA,
-                          width = 0.1,
-                          offset = os+0.004,
+                          width = width,
+                          offset = family_os*2,
                           colnames = F)+
     scale_fill_manual(values = lin_1_7_lv2_cols,
                       breaks = names(lin_1_7_lv2_cols), 
-                      name = "Sublineage")
+                      name = "Lineage level 2")
   
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
   
+  l1_7_ggtree <- gheatmap(l1_7_ggtree, family_data,
+                          color = NA,
+                          width = width,
+                          offset = family_os*4,
+                          colnames = F)+
+    scale_fill_manual(values = family_cols,
+                      breaks = names(family_cols), 
+                      name = "Family")
+  
+  l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
+  
+  # Spoligotype
   l1_7_ggtree <- gheatmap(l1_7_ggtree, spol_data_ggplot,
-                          offset = os+(0.004*3),
+                          offset = spol_os*3.5,
                           color = NA,
                           low="white",
                           high="black",
                           colnames = F)+
     scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
     labs(fill = "Spoligotype")+
-    ggtitle("Lineages 1 & 7")
+    ggtitle("Lineages 1 & 7")+
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))
   
   ggsave(file = paste0(results_path, "lin1_7_ggtree.png"), plot = l1_7_ggtree, width = png_width, height = png_width, units = "mm")
   
@@ -486,9 +443,10 @@ if(do_tree == "2"){
   
   l5_6_8_9_La_ggtree <- ggtree(l5_6_8_9_La_tree, size = line_sz, layout = "circular")
   
+  # Lineage
   l5_6_8_9_La_ggtree <- gheatmap(l5_6_8_9_La_ggtree, lin_lv1_data_ggplot,
                           color = NA,
-                          width = 0.1,
+                          width = width*2.5,
                           offset = 0,
                           colnames = F)+
     scale_fill_manual(values = l5_6_8_9_La_lv1_cols, 
@@ -497,15 +455,30 @@ if(do_tree == "2"){
   
   l5_6_8_9_La_ggtree <- l5_6_8_9_La_ggtree + ggnewscale::new_scale_fill()
   
+  # Family
+  l5_6_8_9_La_ggtree <- gheatmap(l5_6_8_9_La_ggtree, family_data,
+                                 color = NA,
+                                 width = width*2.5,
+                                 offset = family_os*5,
+                                 colnames = F)+
+    scale_fill_manual(values = family_cols, 
+                      breaks = names(family_cols), 
+                      name = "Family")
+  
+  l5_6_8_9_La_ggtree <- l5_6_8_9_La_ggtree + ggnewscale::new_scale_fill()
+  
+  # Spoligotype
   l5_6_8_9_La_ggtree <- gheatmap(l5_6_8_9_La_ggtree, spol_data_ggplot,
-                          offset = os+(0.004*3),
+                          offset = spol_os*6,
                           color = NA,
                           low="white",
                           high="black",
                           colnames = F)+
     scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
     labs(fill = "Spoligotype")+
-    ggtitle("Lineages 5, 6, 9, La")
+    ggtitle("Lineages 5, 6, 9, La")+
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))
   
   ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "lin5_6_8_9_La_ggtree.png"), width = png_width, height = png_width, units = "mm")
   # ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "l5_6_8_9_La_ggtree.svg"))
@@ -526,7 +499,6 @@ if(do_tree == "2"){
   
   
 }else if(do_tree == "skip"){
-  
   
   
 }
