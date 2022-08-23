@@ -29,6 +29,7 @@ table_font_sz <- 8
 library(dplyr)
 library(tibble)
 library(stringr)
+library(ggplot2)
 
 ```
 
@@ -394,7 +395,6 @@ spol_lin_levels_table_split <- split(spol_lin_levels_table, spol_lin_levels_tabl
 # Make lists to store stats for each level
 pure_n_list <- list() # N spols pure at each level
 pure_pc_list <- list() # Overall % of spols pure at each level
-pc_samps_pure_vect_list <- data.frame() # Among the pure spols, take the vector of porportion of samps with each spol (col_prob col)
 med_pc_samps_pure_list <- list() # Take the median of this vector
 
 for(level in names(spol_lin_levels_table_split)){
@@ -413,8 +413,6 @@ for(level in names(spol_lin_levels_table_split)){
   # What % of all the spols at the level are pure?
   pure_pc_list[[new_lv_name]] <- (pure_n_list[[new_lv_name]]/length(all_spols_at_level$spoligotype))*100
   
-  # Each pure spol at the level - get the % of samples with that spol
-  pc_samps_pure_vect_list[[new_lv_name]] <- pure$col_prob
   # Save the median of this value
   med_pc_samps_pure_list[[new_lv_name]] <- round(median(pure$col_prob), 2)
   
@@ -448,6 +446,21 @@ spol_lin_results_plot <- ggplot()+
 spol_lin_results_plot_file <- "../results/spol_lin_results_plot.png"
 
 ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 1100/5, height = 700/5, units = "mm")
+
+
+```
+
+```{r working, echo = F, warning=F, message=F}
+
+# cram_file_sizes_file <- "../data/cram_file_sizes.txt"
+# cram_file_sizes <- read.delim(cram_file_sizes_file, header = F)
+# cram_file_sizes$ind <- 1:nrow(cram_file_sizes)
+# 
+# k <- 2000
+# plot(cram_file_sizes$ind[-(1:k)], cram_file_sizes$V1[-(1:k)], type = 'l')
+# 
+# 
+# head(cram_file_sizes$V1[-(1:2)])
 
 
 ```
@@ -504,8 +517,6 @@ Spoligotyping is a fingerprinting PCR techniques [@Kamerbeek1997], which exploit
 Advances in sequencing technologies will lead to whole genome bacterial characterisation
 
 
-
-
 The lineage system characterised in Napier *et al.* (2020) [@Napier2020] names MTBC clades in a hierarchy of lineages and sublineages. The first level names the familiar major lineages as 1-9, plus animal strains. Sublineages consist of progressively finer resolution of the phylogenetic tree - for example lineage 1 is sub-divided into two main clades, 1.1 and 1.2, and so on **Figure \@ref(fig:lin-1-7-tree)**. These lineages and sublineages overlap with pre-established lineage systems such as regions of difference (RD), preserving major phylogenetic structural changes at the higher levels. Departing from these other lineage systems Napier *et al.* (2020) identifies finer resolution based on statistical differences in the branch lengths of the MTBC phylogenetic tree. The identifying markers of these clades, rather than being major structural changes of the MTBC genome, are individual (synonymous) SNPs with a fixation index (F~st~) score of 1, meaning that the SNP is unique to the clade. 
 
 One of the central questions we consider here is at which level of the  Napier *et al.* (2020) lineage system spoligotypes are usefully associated. The phylogenetic trees in **Figure \@ref(fig:lin-1-7-tree)** clearly show a high degree of noise among the individual spoligotypes. While some patterns can be discerned between the major lineages (the overall spoligotype pattern of lineage 1 is clearly different to lineage 2 for example), it is less clear how spoligotypes vary with the lower levels of the lineage system (1.1, 1.1.1, 1.1.1.1 etc). We developed a score for each spoligotype measuring how purely each is associated to a lineage, at each level, weighted by sample size. This score is somewhat similar to the F~st~ fixiation index used in  Napier *et al.* (2020), and a score of 1 indicates the spoligotype occurs exclusively in a lineage (see **Methods**). 
@@ -555,7 +566,7 @@ For simplicity, our results in **Table \@ref(tab:spol-lin-levels-table)** only s
 
 At the first lineage level (lineages 1-7), there were `r pure_n_list$lv1` (`r pc(pure_pc_list$lv1)`) spoligotypes appearing exclusively in their respective lineages, however the the median percentage of samples with a pure spoligotype across all lineages 1-7 was very low at `r med_pc_samps_pure_list$lv1`. 
 
-The levels show decreasing numbers and proportions of samples with pure spoligotypes (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)), but the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure_list$lv2`, third level: `r med_pc_samps_pure_list$lv3`, fourth level: `r med_pc_samps_pure_list$lv4`) (**Figure `r spol-lin-results-plot-display`**). 
+The levels show decreasing numbers and proportions of samples with pure spoligotypes (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)), but the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure_list$lv2`, third level: `r med_pc_samps_pure_list$lv3`, fourth level: `r med_pc_samps_pure_list$lv4`) (**Figure \@ref(fig:spol-lin-results-plot-display)**). 
 
 ## Discussion
 
@@ -592,16 +603,14 @@ XXX, JEP and TGC conceived and directed the project. XXXXXXX contributed data. G
 
 ## FIGURES
 
-Boxplot: Aggregated percentages of samples with each spoligotype, within each lineage; Line: Total percentage of 'pure' spoligotypes.
-
-```{r spol-lin-results-plot-display, echo = F, warning=F, message=F, fig.cap = "Boxplot: Aggregated percentages of samples within each lineage with 'pure' spoligotypes; Line: Total percentage of 'pure' spoligotypes."}
+```{r spol-lin-results-plot-display, echo = F, warning=F, message=F, fig.cap = "Boxplot: Aggregated percentages of samples with each spoligotype, within each lineage; Line: Total percentage of 'pure' spoligotypes."}
   
 knitr::include_graphics(spol_lin_results_plot_file)
 
 ```
 
 
-```{r lin-1-7-tree, echo = F, warning=F, fig.cap = "Phylogenetic trees showing lineage and spoligotypes."}
+```{r lin-1-7-tree, echo = F, warning=F, fig.cap = "Phylogenetic trees showing lineage or sublineage, family and spoligotypes."}
 
 knitr::include_graphics(lin1_7_ggtree)
 
