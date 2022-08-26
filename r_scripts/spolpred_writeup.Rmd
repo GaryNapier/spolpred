@@ -240,6 +240,7 @@ results_path <- "../results/"
 
 spol_data_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
 spol_lin_levels_table_file <- paste0(results_path, "spol_lin_levels_table.csv")
+family_lookup_file <- paste0(data_path, "family_lookup.csv")
 
 lin1_7_ggtree <- paste0(results_path, "lin1_7_ggtree.png")
 lin2_ggtree <- paste0(results_path, "lin2_ggtree.png")
@@ -253,6 +254,8 @@ lin5_6_8_9_La_ggtree <- paste0(results_path, "lin5_6_8_9_La_ggtree.png")
 
 spol_data <- read.csv(spol_data_file, header = T, colClasses = c("spoligotype" = "character"))
 spol_lin_levels_table <- read.csv(spol_lin_levels_table_file, colClasses = c("spoligotype" = "character"))
+
+family_lookup <- read.csv(family_lookup_file)
 
 ```
 
@@ -271,11 +274,63 @@ spol_data$family <- ifelse(spol_data$family == "", "-", spol_data$family)
 lin_spol_sit_fam <- odr(unique(select(spol_data, lineage, spoligotype, SIT, family)))
 sit_fam_spol <- odr(unique(select(spol_data, SIT, family, spoligotype)))
 sit_fam <- odr(unique(select(spol_data, SIT, family)))
+lin_fam <- odr(unique(select(spol_data, lineage, family)))
 
 # Separate out the data for just correlating lineage and spol
 
 # Remove "lineage" so that the levels can be split out
 spol_data$lineage <- gsub("lineage", "", spol_data$lineage)
+
+
+```
+
+```{r main-lin-family-group, echo = F, warning=F, message=F}
+
+# What is the correspondence between main lin and the (main) spol families?
+
+# Clean
+family_lookup <- subset(family_lookup, !(family == "Zero-copy"))
+
+# Merge lineage into family lookup table and pull unique main lineage and family group 
+lin_fam <- select(spol_data, sample, lineage, family)
+lin_fam_merged <- merge(lin_fam, family_lookup, by = "family", all.x = T, sort = F)
+lin_fam_merged$main_lin <- substr(lin_fam_merged$lineage, 1, 1)
+lin_fam_merged$main_lin <- ifelse(grepl("La", lin_fam_merged$lineage), "La", lin_fam_merged$main_lin)
+
+manu <- subset(lin_fam_merged, family_group == "Manu")
+manu_spol <- merge(manu, select(spol_data, sample, spoligotype), by = "sample")
+write.csv(manu_spol, "../results/manu_spol.csv", row.names = F, quote = F)
+
+# Find the anomalous main lin-family groups - ones with just a few samples
+# e.g. some L1 samps are AFRI, which is clearly not correct
+lin_fam_freq_tab <- as.data.frame.matrix(table(lin_fam_merged$family_group, lin_fam_merged$main_lin))
+
+# Make a table of the 'proper' correspondence between main lin and family group, taking out the anomalous ones from the freq table
+main_lin_family_group <- unique(select(lin_fam_merged, main_lin, family_group))
+main_lin_family_group <- subset(main_lin_family_group, !is.na(family_group))
+main_lin_family_group <- subset(main_lin_family_group, !(family_group == "Unknown"))
+main_lin_family_group <- odr(main_lin_family_group)
+
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "AFRI"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "AFRI"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "Beijing"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "Beijing"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "Beijing"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "BOV"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "CAS"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "2" & family_group == "CAS"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "CAS"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "CAS"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "EAI"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "PINI2"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "PINI2"))
+main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "T"))
+
+main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
+
+```
+
+```{r clean-spol-data-ctnd, echo = F, warning=F, message=F}
 
 # Just retain sample, lin and spol cols 
 spol_data <- select(spol_data, sample, lineage, spoligotype)
@@ -293,6 +348,7 @@ exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
 spol_data <- merge(spol_data, exp,
                    by.x = "sample", by.y = "id", all.x = T, 
                    sort = F)
+
 ```
 
 ```{r clean-results-table, echo = F, warning=F, message=F}
@@ -500,12 +556,16 @@ ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 
 ## Background
 
 Napier [@Napier2020]
-Brudey [@Brudey2006]
+Brudey [@Brudey2006] -  spoligotyping database 
 Kamerbeek [@Kamerbeek1997]
 Coll (spolpred) [@Coll2012]
 
 
-Tuberculosis is an infectious disease of high global burden caused by members of the *Mycobacterium tuberculosis* complex (MTBC), which includes XXX
+Tuberculosis is an infectious disease of high global burden caused by members of the *Mycobacterium tuberculosis* complex (MTBC), which includes *M. tuberculosis sensu stricto* (*Mtb*), *M. africanum* and animal strains such as *M. bovis*. 
+
+Though the MTBC is described as clonal, there is enough variation to distinguish strain types within members of the complex. *Mtb* and *M. africanum* are phylogenetically classified in nine main lineages (L1-9). In particular, strain types are distributed phylogeographically. Spoligotyping nomenclature [@Brudey2006] reflects the phylogeographical structure and its main families overlap the lineage system (**Table \@ref(tab:main-lin-fam-group-tab)**). These overlaps are well preserved in our data; **Table \@ref(tab:lin-fam-freq-tab)** shows there are only a few samples in each main lineage mis-assigned a spoligotype family (for example 4 samples in L1 are assigned to AFRI). At first glance the spoligotype nomenclature appears to have more resolution that the lineages system, there being for example nine families under L4. However, there are many more sub-lineages in the lineage system which, although not geographically associated, discern small clades of the full MTBC phylogenetic tree [@Napier2020]. Furthermore, some of the spoligotype nomenclature is so broad in its geographical scope as to be uninformative (e.g. "East-African-Indian" (EAI) and "Latin American Mediteranean" (LAM)). 
+
+
 
 - Different strain-types 
 - phylogeography
@@ -530,7 +590,7 @@ With a great number of WGS Mtb available, we seek to update the definition of sp
 
 
 
-## Implementation
+##### Implementation
 
 Description of the overall architecture of the software implementation
 
@@ -626,20 +686,17 @@ knitr::include_graphics(lin2_ggtree)
 
 knitr::include_graphics(lin3_ggtree)
 
-
 ```
 
 ```{r lin-4-tree, echo = F, warning=F}
 
 knitr::include_graphics(lin4_ggtree)
 
-
 ```
 
 ```{r lin-5-tree, echo = F, warning=F}
 
 knitr::include_graphics(lin5_6_8_9_La_ggtree)
-
 
 ```
 
@@ -651,8 +708,36 @@ cap <- "Numbers of samples and unique spoligotypes for the first two lineage lev
 
 knitr::kable(table_1, row.names = F, caption = cap, format = "pipe")
 
+```
+
+```{r main-lin-fam-group-tab, echo = F, warning=F}
+
+cap <- "Main *M.tb* lineages (1-7, plus animal strains) and their corresponding spoligotype families"
+
+knitr::kable(main_lin_family_group, row.names = F, caption = cap, format = "pipe")
 
 ```
+
+EAI = East-African-Indian
+CAS = Central Asian Strains
+H = Haarlem
+LAM = Latin America-Mediterranean
+S = XXX
+T = Ghana XXX ? - CHECK XXX
+AFRI = *M. africanum*
+BOV = *M. bovis* (animal)
+PINI2 = *M. pinnipedii* (animal)
+
+
+```{r lin-fam-freq-tab, echo = F, warning=F}
+
+cap <- "Frequency table of samples by main lineage and spoligotype family"
+
+knitr::kable(fmt(lin_fam_freq_tab), row.names = F, caption = cap, format = "pipe")
+
+
+```
+
 
 ```{r spol-lin-levels-table, echo = F, warning=F}
 
@@ -661,7 +746,6 @@ cap <- "Correspondence between lineage and spoligotypes at each of the four leve
 knitr::kable(spol_lin_levels_table_display, row.names = F, caption = cap, format = "pipe")
 
 ```
-
 
 
 
