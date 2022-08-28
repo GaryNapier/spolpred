@@ -6,8 +6,8 @@ output:
     table_caption: yes
     number_sections: no
     reference_docx: ../../pipeline/word_template/use_template.docx
-bibliography: all_refs.bib
-csl: biomed-central.csl
+bibliography: ../../pipeline/references/all_refs.bib
+csl: ../../pipeline/references/biomed-central.csl
 ---
 
 ```{r setup, include=FALSE, echo = F, warning=F, message=F}
@@ -26,10 +26,13 @@ table_font_sz <- 8
 ```{r library, include=FALSE, echo = F, warning=F, message=F}
 
 # library(sjmisc)
+library(plyr)
 library(dplyr)
 library(tibble)
 library(stringr)
 library(ggplot2)
+library(tidyverse)
+library(tidyr)
 
 ```
 
@@ -214,6 +217,11 @@ list_to_df_group <- function(lst){
   do.call("rbind", df_list)
 }
 
+replace_inf <- function(x){
+  x[is.infinite(x)] <- 0
+  x
+}
+
 ```
 
 ```{r variables, echo = F, warning=F, message=F}
@@ -233,6 +241,7 @@ setwd("~/Documents/spolpred/r_scripts")
 
 data_path <- "../data/"
 results_path <- "../results/"
+metadata_path <- "../../metadata/"
 
 ```
 
@@ -241,6 +250,7 @@ results_path <- "../results/"
 spol_data_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
 spol_lin_levels_table_file <- paste0(results_path, "spol_lin_levels_table.csv")
 family_lookup_file <- paste0(data_path, "family_lookup.csv")
+metadata_file <- paste0(metadata_path, "tb_data_18_02_2021.csv")
 
 lin1_7_ggtree <- paste0(results_path, "lin1_7_ggtree.png")
 lin2_ggtree <- paste0(results_path, "lin2_ggtree.png")
@@ -254,8 +264,8 @@ lin5_6_8_9_La_ggtree <- paste0(results_path, "lin5_6_8_9_La_ggtree.png")
 
 spol_data <- read.csv(spol_data_file, header = T, colClasses = c("spoligotype" = "character"))
 spol_lin_levels_table <- read.csv(spol_lin_levels_table_file, colClasses = c("spoligotype" = "character"))
-
 family_lookup <- read.csv(family_lookup_file)
+metadata <- read.csv(metadata_file)
 
 ```
 
@@ -281,6 +291,9 @@ lin_fam <- odr(unique(select(spol_data, lineage, family)))
 # Remove "lineage" so that the levels can be split out
 spol_data$lineage <- gsub("lineage", "", spol_data$lineage)
 
+# Clean family
+spol_data$family <- ifelse(spol_data$family == "-", "Unknown", spol_data$family)
+spol_data$family <- ifelse(spol_data$family == "Zero-copy", "Unknown", spol_data$family)
 
 ```
 
@@ -327,6 +340,49 @@ main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & famil
 main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "T"))
 
 main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
+
+```
+
+```{r geo, echo = F, warning=F, message=F}
+
+
+# Clean metadata regions
+metadata$subregion <- ifelse(metadata$subregion == "Australia and New Zealand", "Oceana", metadata$subregion)
+metadata$subregion <- ifelse(metadata$subregion == "Northern America", "North America", metadata$subregion)
+metadata$subregion <- ifelse(metadata$subregion == "#N/A", "Unknown", metadata$subregion)
+
+# Merge metadata to spol family data
+geo_df <- select(metadata, wgs_id, country_code, country, region, subregion)
+lin_fam_geo_df <- merge(lin_fam_merged, geo_df, by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
+
+# Make table of region and spol family
+region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
+region_family_tab <- cbind(Region = row.names(region_family_tab), region_family_tab)
+
+# Clean
+unknown_row <- subset(region_family_tab, Region == "Unknown")
+region_family_tab <- subset(region_family_tab, !(Region == "Unknown"))
+region_family_tab <- rbind(region_family_tab, unknown_row)
+
+region_family_tab_plot <- region_family_tab %>% gather(Family, value, -Region)
+
+# Plot
+max_n <- round_any(max(region_family_tab_plot$value), 1000)
+leg_ticks <- c(0, 10, 100, 1000, 2000)
+leg_breaks <- replace_inf(log(leg_ticks))
+region_family_plot <- ggplot() +
+  geom_tile(data = region_family_tab_plot, 
+            aes(x = Family, y = Region, fill = log(value+1)))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  scale_fill_continuous(breaks = leg_breaks, 
+                        labels = leg_ticks, 
+                        name = "n")+
+  scale_y_discrete(limits=rev)
+
+region_family_plot_file <- paste0(results_path, "region_family_plot.png")
+ggsave(plot = region_family_plot, 
+       file = region_family_plot_file, 
+       width = 1500/7, height = 1000/7, units = "mm")
 
 ```
 
@@ -503,21 +559,9 @@ spol_lin_results_plot_file <- "../results/spol_lin_results_plot.png"
 
 ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 1100/5, height = 700/5, units = "mm")
 
-
 ```
 
 ```{r working, echo = F, warning=F, message=F}
-
-# cram_file_sizes_file <- "../data/cram_file_sizes.txt"
-# cram_file_sizes <- read.delim(cram_file_sizes_file, header = F)
-# cram_file_sizes$ind <- 1:nrow(cram_file_sizes)
-# 
-# k <- 2000
-# plot(cram_file_sizes$ind[-(1:k)], cram_file_sizes$V1[-(1:k)], type = 'l')
-# 
-# 
-# head(cram_file_sizes$V1[-(1:2)])
-
 
 ```
 
@@ -525,9 +569,7 @@ ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 
 | | |
 | ----------- | ----------- |
 |Gary Napier^1^ |	gary.napier@lshtm.ac.uk|
-|Collaborators in Europe	| |
 |Susana Campino^1^ | susana.campino@lshtm.ac.uk|
-|Collaborators in Europe | |
 |Jody Phelan^1^,^\*^ | jody.phelan@lshtm.ac.uk|
 |Taane G. Clark^1,5,\*^ | taane.clark@lshtm.ac.uk|
 
@@ -555,40 +597,26 @@ ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 
 
 ## Background
 
-Napier [@Napier2020]
-Brudey [@Brudey2006] -  spoligotyping database 
-Kamerbeek [@Kamerbeek1997]
-Coll (spolpred) [@Coll2012]
+<!-- Napier [@Napier2020] -->
+<!-- Brudey [@Brudey2006] -  spoligotyping database  -->
+<!-- Kamerbeek [@Kamerbeek1997] -->
+<!-- Coll (spolpred) [@Coll2012] -->
 
+Tuberculosis is an infectious disease of high global burden caused by members of the *Mycobacterium tuberculosis* complex (MTBC), which includes *M. tuberculosis sensu stricto* (*Mtb*), *M. africanum* and animal strains such as *M. bovis*. Though the MTBC is described as clonal, there is enough variation to distinguish strain types within members of the complex. *Mtb* and *M. africanum* are phylogenetically classified in nine main lineages (L1-9). In particular, strain types are distributed phylogeographically. 
 
-Tuberculosis is an infectious disease of high global burden caused by members of the *Mycobacterium tuberculosis* complex (MTBC), which includes *M. tuberculosis sensu stricto* (*Mtb*), *M. africanum* and animal strains such as *M. bovis*. 
+Spoligotyping is a fingerprinting PCR techniques [@Kamerbeek1997], which exploits the polymorphism harboured at the direct repeat (DR) locus of MTBC. It is based on the PCR amplification of 43 short unique sequences (termed spacers) contained between well-conserved 36-bp DRs and the subsequent hybridisation of the products onto a membrane with oligonucleotides complementary to each spacer. Since strains vary in the occurrence of spacers, each sample produces a distinctive spot pattern, which is then translated into a numerical code of 8 digits. More than 60 lineages/sub-lineages have been defined based on octal codes, each one normally showing a specific world distribution ('family') [@Brudey2006]. 
 
-Though the MTBC is described as clonal, there is enough variation to distinguish strain types within members of the complex. *Mtb* and *M. africanum* are phylogenetically classified in nine main lineages (L1-9). In particular, strain types are distributed phylogeographically. Spoligotyping nomenclature [@Brudey2006] reflects the phylogeographical structure and its main families overlap the lineage system (**Table \@ref(tab:main-lin-fam-group-tab)**). These overlaps are well preserved in our data; **Table \@ref(tab:lin-fam-freq-tab)** shows there are only a few samples in each main lineage mis-assigned a spoligotype family (for example 4 samples in L1 are assigned to AFRI). At first glance the spoligotype nomenclature appears to have more resolution that the lineages system, there being for example nine families under L4. However, there are many more sub-lineages in the lineage system which, although not geographically associated, discern small clades of the full MTBC phylogenetic tree [@Napier2020]. Furthermore, some of the spoligotype nomenclature is so broad in its geographical scope as to be uninformative (e.g. "East-African-Indian" (EAI) and "Latin American Mediteranean" (LAM)). 
+Spoligotyping nomenclature [@Brudey2006] reflects the phylogeographical structure of MTBC and its main families overlap the lineage system (**Table \@ref(tab:main-lin-fam-group-tab)**). These overlaps are well preserved in our data; **Table \@ref(tab:lin-fam-freq-tab)** shows there are only a few samples in each main lineage mis-assigned a spoligotype family (for example 4 samples in L1 are assigned to AFRI).
 
+Both the spoligotype system and the lineage system have more fine-grained nomenclature than shown in **Table \@ref(tab:lin-fam-freq-tab)**. Spoligotype families are further subdivided into sub-families such as AFRI1, AFRI2, AFRI3, preserving geographical links [@Brudey2006], while the lineage system, although not geographically associated, discerns small clades of the full MTBC phylogenetic tree in a numerically hierarchical manner (e.g. 1, 1.1, 1.1.1) [@Napier2020]. Although the relationship between these systems is well preserved in our data at the highest level, it is unclear how these systems diverge at lower levels. 
 
+Strain identification is crucial to addressing key epidemiological questions, providing information on the individial as well as global scales. Strain typing is informative in the investigation of transmission events because although two samples of the same strain may or may not have been transmitted, two samples cannot have been transmitted if they are from two different (sub-)lineages. In the wider context, strain typing provides valuable insight into the spread of MTBC variants, indicating potential differences in genotype-phenotype interaction. There is evidence for example that Beijing strains show lineage-specific associations with drug resistance [@Oppong2019], and that the geographical ubiquity of lineages 2 (Beijing) and 4 (Euro-American-Indian) can be attributed to virulence and transmissibility [@Coscolla2014a]. Furthermore, strain typing at higher phylogenetic resolution can reveal within-strain differences, such as the typical and atypical Beijing strains varying in geographical distribution, resistance and virulence [@Forrellad2013][@Ribeiro2014]. Advances in sequencing technologies will lead high-resolution strain typing offered by whole genome sequencing, which ought to improve transmission studies and enable the tracking of between- and within-lineage genotypic-phenotypic differences. 
 
-- Different strain-types 
-- phylogeography
+The lineage system characterised in Napier (2020) [@Napier2020] names MTBC clades in a hierarchy of lineages and sublineages. The first level names the familiar major lineages as 1-9, plus animal strains. Sublineages consist of progressively finer resolution of the phylogenetic tree - for example lineage 1 is sub-divided into two main clades, 1.1 and 1.2, and so on **Figure \@ref(fig:lin-1-7-tree)**. These lineages and sublineages overlap with pre-established lineage systems such as regions of difference (RD), preserving major phylogenetic structural changes at the higher levels. Departing from these other lineage systems, it identifies finer resolution based on statistical differences in the branch lengths of the MTBC phylogenetic tree. The identifying markers of these clades, rather than being major structural changes of the MTBC genome, are individual (synonymous) SNPs with a fixation index (F~st~) score of 1, meaning that the SNP is unique to the clade. 
 
-Strain identification is crucial to address key epidemiological questions, providing XXXX what information XXXX
+One of the central questions we consider here is at which level of the  Napier *et al.* (2020) lineage system spoligotypes are usefully associated. The phylogenetic trees in **Figure \@ref(fig:lin-1-7-tree)** clearly show a high degree of noise among the individual spoligotypes. While some patterns can be discerned between the major lineages (the overall spoligotype pattern of lineage 1 is clearly different to lineage 2 for example), it is less clear how spoligotypes vary with the lower levels of the lineage system (1.1, 1.1.1, 1.1.1.1 etc). We developed a score for each spoligotype measuring how purely each is associated to a lineage, at each level, weighted by sample size. This score is somewhat similar to the F~st~ fixiation index used in [@Napier2020], and a score of 1 indicates the spoligotype occurs exclusively in a lineage (see **Methods**). 
 
-Spoligotyping is a fingerprinting PCR techniques [@Kamerbeek1997], which exploits the polymorphism harboured at the direct repeat (DR) locus of MTBC. It is based on the PCR amplification of 43 short unique sequences (termed spacers) contained between well-conserved 36-bp DRs and the subsequent hybridisation of the products onto a membrane with oligonucleotides complementary to each spacer. Since strains vary in the occurrence of spacers, each sample produces a distinctive spot pattern, which is then translated into a numerical code of 8 digits. More than 60 lineages/sub-lineages have been defined based on octal codes, each one normally showing a specific world distribution [@Brudey2006]. 
-
-Advances in sequencing technologies will lead to whole genome bacterial characterisation
-
-
-The lineage system characterised in Napier *et al.* (2020) [@Napier2020] names MTBC clades in a hierarchy of lineages and sublineages. The first level names the familiar major lineages as 1-9, plus animal strains. Sublineages consist of progressively finer resolution of the phylogenetic tree - for example lineage 1 is sub-divided into two main clades, 1.1 and 1.2, and so on **Figure \@ref(fig:lin-1-7-tree)**. These lineages and sublineages overlap with pre-established lineage systems such as regions of difference (RD), preserving major phylogenetic structural changes at the higher levels. Departing from these other lineage systems Napier *et al.* (2020) identifies finer resolution based on statistical differences in the branch lengths of the MTBC phylogenetic tree. The identifying markers of these clades, rather than being major structural changes of the MTBC genome, are individual (synonymous) SNPs with a fixation index (F~st~) score of 1, meaning that the SNP is unique to the clade. 
-
-One of the central questions we consider here is at which level of the  Napier *et al.* (2020) lineage system spoligotypes are usefully associated. The phylogenetic trees in **Figure \@ref(fig:lin-1-7-tree)** clearly show a high degree of noise among the individual spoligotypes. While some patterns can be discerned between the major lineages (the overall spoligotype pattern of lineage 1 is clearly different to lineage 2 for example), it is less clear how spoligotypes vary with the lower levels of the lineage system (1.1, 1.1.1, 1.1.1.1 etc). We developed a score for each spoligotype measuring how purely each is associated to a lineage, at each level, weighted by sample size. This score is somewhat similar to the F~st~ fixiation index used in  Napier *et al.* (2020), and a score of 1 indicates the spoligotype occurs exclusively in a lineage (see **Methods**). 
- 
-
-
-
-Spoligotyping is still a technology of choice in some settings, and it is possible to **in silico** predict spoligotypes from SpolPred [@Coll2012]
-
-With a great number of WGS Mtb available, we seek to update the definition of spoligotypes, check consistency with the sub-lineage system [@Napier2020], and assess their global distribution. This is achieved through developing software ("Spolpred2") to *in silico* genotype isolates, to predict the spoligotype from raw sequence reads. 
-
-
+Spoligotyping is still a technology of choice in some settings however, and it is possible to *in silico* predict spoligotypes from SpolPred [@Coll2012]. With a great number of *Mtb* WGS available, we seek to check consistency with the sub-lineage system [@Napier2020], and assess their global distribution. This is achieved through developing software ("Spolpred2") to *in silico* genotype isolates, to predict the spoligotype from raw sequence reads. 
 
 ##### Implementation
 
@@ -599,8 +627,6 @@ We have developed a XXXXXX executable to predict the spoligotype octal code from
 Appearance of all 43 queries is eventually translated into the octal code which is then matched to a spoligotype in the latest version of the international spoligotyping database (SpolDB5).
 
 The software was run on 40k Mtb
-
-Compared to the new sublineage system
 
 ## Methods
 
@@ -615,6 +641,10 @@ Our calculation proceeded as follows: At each lineage level, a frequency table w
 These calculations yield a measure of how purely associated each spoligotype is to each lineage, at each level. A score of 1 for a spoligotype-lineage combination means a spoligotype only appears in that particular lineage. For example, spoligotype 1001111111111111111111111111000010110001111 scores 1 for lineage 1.1, meaning this spoligotype is only found in this lineage and no others (at the second level of the lineage system). 
 
 ## Results
+
+**Global distribution of spoligotype families**
+
+The most frequent spoligotype family in our data belongs to Beijing (8,056), followed by T (6,000) and LAM (4,229). The most common geographical regions in which our samples are found were Northern Europe (5,018), Southern Africa (4,488) and Southeast Asia (3,650). **Figure \@ref(fig:region-family-plot)** shows the frequency of samples gathered in a geographical region versus the spoligotype family. While many samples occur in their expected geographical region, there is much variation as to where in the world a spoligotype family is found. The geographical distribution of our data with respect to spoligotype family perhaps reflects samples being taken as part of transmission studies or other clinically relevant investigation. 
 
 **Association of spoligotypes to lineages**
 
@@ -669,7 +699,6 @@ knitr::include_graphics(spol_lin_results_plot_file)
 
 ```
 
-
 ```{r lin-1-7-tree, echo = F, warning=F, fig.cap = "Phylogenetic trees showing lineage or sublineage, family and spoligotypes."}
 
 knitr::include_graphics(lin1_7_ggtree)
@@ -700,6 +729,13 @@ knitr::include_graphics(lin5_6_8_9_La_ggtree)
 
 ```
 
+```{r region-family-plot, echo = F, warning=F, fig.cap="Heatmap of number of samples by spoligotype family and region of sample collection"}
+
+knitr::include_graphics(region_family_plot_file)
+
+```
+
+
 ## TABLES
 
 ```{r table-1-show, echo = F, warning=F}
@@ -718,14 +754,14 @@ knitr::kable(main_lin_family_group, row.names = F, caption = cap, format = "pipe
 
 ```
 
-EAI = East-African-Indian
-CAS = Central Asian Strains
-H = Haarlem
-LAM = Latin America-Mediterranean
-S = XXX
-T = Ghana XXX ? - CHECK XXX
-AFRI = *M. africanum*
-BOV = *M. bovis* (animal)
+EAI = East-African-Indian;
+CAS = Central Asian Strains;
+H = Haarlem;
+LAM = Latin America-Mediterranean;
+S = XXX;
+T = Ghana XXX ? - CHECK XXX;
+AFRI = *M. africanum*;
+BOV = *M. bovis* (animal);
 PINI2 = *M. pinnipedii* (animal)
 
 
