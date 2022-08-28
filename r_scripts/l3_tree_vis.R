@@ -253,7 +253,7 @@ names(family_cols) <- unique(family_lookup$family_group)
 
 # Plot ----
 
-do_tree <- "1_7"
+do_tree <- "2"
 
 # Set up ggtree parameters 
 width <- 0.05 # Heatmap width
