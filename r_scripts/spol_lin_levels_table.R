@@ -12,7 +12,7 @@ results_path <- "../results/"
 
 # in
 spol_data_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
-stopifnot(file.exists(spol_data_file))
+animal_file <- paste0(data_path, "animal_spol_data.csv")
 
 # out
 spol_lin_levels_table_file <- paste0(results_path, "spol_lin_levels_table.csv")
@@ -21,6 +21,8 @@ spol_lin_levels_table_file <- paste0(results_path, "spol_lin_levels_table.csv")
 
 spol_data <- read.csv(spol_data_file, header = T, 
                       colClasses = c("spoligotype" = "character"))
+
+animal <- read.csv(animal_file)
 
 # Clean data ----
 
@@ -43,15 +45,40 @@ sit_fam <- odr(unique(select(spol_data, SIT, family)))
 # Remove "lineage" so that the levels can be split out
 spol_data$lineage <- gsub("lineage", "", spol_data$lineage)
 
+# Clean animal spoligotypes (messed up when saving to csv and editing in excel)
+animal <- merge(select(animal, -(spoligotype)), 
+                select(spol_data, sample, spoligotype), 
+                by = "sample", all.x = T, sort = F)
+animal <- select(animal, sample, lineage, spoligotype, everything())
+
+# # Just retain sample, lin and spol cols 
+# spol_data <- select(spol_data, sample, lineage, spoligotype)
+# 
+# # Remove and store animal strains - need to process separately
+# # Or only analyse non-animal?
+# # animal <- subset(spol_data, grepl("La", lineage))
+# spol_data <- subset(spol_data, !(grepl("La", lineage)))
+# 
+# # Expand lineages and merge
+# exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
+# # data <- merge(rbind(spol_data, animal), exp,
+# #               by.x = "sample", by.y = "id", all.x = T, 
+# #               sort = F)
+# spol_data <- merge(spol_data, exp,
+#                    by.x = "sample", by.y = "id", all.x = T, 
+#                    sort = F)
+
 # Just retain sample, lin and spol cols 
 spol_data <- select(spol_data, sample, lineage, spoligotype)
 
 # Remove and store animal strains - need to process separately
-# Or only analyse non-animal?
+# Add back in after expanding animal strains manually in excel
 # animal <- subset(spol_data, grepl("La", lineage))
+# write.csv(animal, file = paste0(data_path, "animal_spol_data.csv"), 
+#           quote = F, row.names = F)
 spol_data <- subset(spol_data, !(grepl("La", lineage)))
 
-# Expand lineages and merge
+# Expand lineages, rbind animal back in and merge
 exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
 # data <- merge(rbind(spol_data, animal), exp,
 #               by.x = "sample", by.y = "id", all.x = T, 
@@ -60,9 +87,11 @@ spol_data <- merge(spol_data, exp,
                    by.x = "sample", by.y = "id", all.x = T, 
                    sort = F)
 
+# Add animal back in after processing manually
+spol_data <- rbind(spol_data, animal)
+
 # Keep only those with 5 or more samples per spoligo
 spol_data <- spol_data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
-
 
 levels <- c("lin_level_1", "lin_level_2", "lin_level_3", "lin_level_4")
 

@@ -251,6 +251,7 @@ spol_data_file <- paste0(data_path, "spoligo_lineage.SNPs.csv")
 spol_lin_levels_table_file <- paste0(results_path, "spol_lin_levels_table.csv")
 family_lookup_file <- paste0(data_path, "family_lookup.csv")
 metadata_file <- paste0(metadata_path, "tb_data_18_02_2021.csv")
+animal_file <- paste0(data_path, "animal_spol_data.csv")
 
 lin1_7_ggtree <- paste0(results_path, "lin1_7_ggtree.png")
 lin2_ggtree <- paste0(results_path, "lin2_ggtree.png")
@@ -266,6 +267,7 @@ spol_data <- read.csv(spol_data_file, header = T, colClasses = c("spoligotype" =
 spol_lin_levels_table <- read.csv(spol_lin_levels_table_file, colClasses = c("spoligotype" = "character"))
 family_lookup <- read.csv(family_lookup_file)
 metadata <- read.csv(metadata_file)
+animal <- read.csv(animal_file)
 
 ```
 
@@ -294,6 +296,13 @@ spol_data$lineage <- gsub("lineage", "", spol_data$lineage)
 # Clean family
 spol_data$family <- ifelse(spol_data$family == "-", "Unknown", spol_data$family)
 spol_data$family <- ifelse(spol_data$family == "Zero-copy", "Unknown", spol_data$family)
+
+# Clean animal spoligotypes (messed up when saving to csv and editing in excel)
+animal <- merge(select(animal, -(spoligotype)), 
+                select(spol_data, sample, spoligotype), 
+                by = "sample", all.x = T, sort = F)
+animal <- select(animal, sample, lineage, spoligotype, everything())
+
 
 ```
 
@@ -341,6 +350,8 @@ main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & famil
 
 main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
 
+names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
+
 ```
 
 ```{r geo, echo = F, warning=F, message=F}
@@ -370,14 +381,16 @@ region_family_tab_plot <- region_family_tab %>% gather(Family, value, -Region)
 max_n <- round_any(max(region_family_tab_plot$value), 1000)
 leg_ticks <- c(0, 10, 100, 1000, 2000)
 leg_breaks <- replace_inf(log(leg_ticks))
-region_family_plot <- ggplot() +
-  geom_tile(data = region_family_tab_plot, 
-            aes(x = Family, y = Region, fill = log(value+1)))+
+region_family_plot <- ggplot(data = region_family_tab_plot, 
+            aes(x = Family, y = Region, fill = log(value+1))) +
+  geom_tile()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
   scale_fill_continuous(breaks = leg_breaks, 
                         labels = leg_ticks, 
                         name = "n")+
-  scale_y_discrete(limits=rev)
+  geom_text(aes(label = value), color = "white", size = 2.25)+ 
+  scale_y_discrete(limits=rev)+
+  coord_fixed()
 
 region_family_plot_file <- paste0(results_path, "region_family_plot.png")
 ggsave(plot = region_family_plot, 
@@ -392,9 +405,12 @@ ggsave(plot = region_family_plot,
 spol_data <- select(spol_data, sample, lineage, spoligotype)
 
 # Remove and store animal strains - need to process separately
-# Or only analyse non-animal?
+# Add back in after expanding animal strains manually in excel
 # animal <- subset(spol_data, grepl("La", lineage))
+# write.csv(animal, file = paste0(data_path, "animal_spol_data.csv"), 
+#           quote = F, row.names = F)
 spol_data <- subset(spol_data, !(grepl("La", lineage)))
+
 
 # Expand lineages, rbind animal back in and merge
 exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
@@ -404,6 +420,9 @@ exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
 spol_data <- merge(spol_data, exp,
                    by.x = "sample", by.y = "id", all.x = T, 
                    sort = F)
+
+# Add animal back in after processing manually
+spol_data <- rbind(spol_data, animal)
 
 ```
 
@@ -431,11 +450,14 @@ for(level in names(spol_lin_levels_split)){
   }
   spol_lin_levels_top[[level]] <- do.call("rbind", lin_list)
 }
-spol_lin_levels_top <- do.call("rbind", spol_lin_levels_top)
 
-# Tidy top results table for display
-spol_lin_levels_table_display <- rm_dup_group(spol_lin_levels_top, "lineage")
-spol_lin_levels_table_display <- rm_dup_group(spol_lin_levels_table_display, "level")
+# Tidy top results table for display 
+# - need to do before r-binding because all dups will be removed, not just the consecutive ones
+spol_lin_levels_table_display <- lapply(spol_lin_levels_top, rm_dup_group, "lineage")
+spol_lin_levels_table_display <- lapply(spol_lin_levels_table_display, rm_dup_group, "level")
+
+spol_lin_levels_table_display <- do.call("rbind", spol_lin_levels_table_display)
+
 # Need to wrap spol in quotes for otherwise printout is dodgy 
 spol_lin_levels_table_display$spoligotype <- paste0("\"", spol_lin_levels_table_display$spoligotype, "\"")
 
@@ -769,7 +791,7 @@ PINI2 = *M. pinnipedii* (animal)
 
 cap <- "Frequency table of samples by main lineage and spoligotype family"
 
-knitr::kable(fmt(lin_fam_freq_tab), row.names = F, caption = cap, format = "pipe")
+knitr::kable(fmt(lin_fam_freq_tab), row.names = T, caption = cap, format = "pipe")
 
 
 ```
