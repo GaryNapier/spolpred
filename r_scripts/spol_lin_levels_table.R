@@ -32,8 +32,10 @@ spol_data$lineage <- ifelse(spol_data$lineage == "", "lineage1.2.2.1", spol_data
 spol_data <- subset(spol_data, !(spoligotype == "0000000000000000000000000000000000000000000"))
 
 # Clean SIT and family cols
-spol_data$SIT <- ifelse(spol_data$SIT == "", "-", spol_data$SIT)
-spol_data$family <- ifelse(spol_data$family == "", "-", spol_data$family)
+spol_data$SIT <- ifelse(spol_data$SIT == "", "Unknown", spol_data$SIT)
+spol_data$family <- ifelse(spol_data$family == "", "Unknown", spol_data$family)
+spol_data$family <- ifelse(spol_data$family == "-", "Unknown", spol_data$family)
+spol_data$family <- ifelse(spol_data$family == "Zero-copy", "Unknown", spol_data$family)
 
 # Separate out all the metadata into lookup tables and data tables
 lin_spol_sit_fam <- odr(unique(select(spol_data, lineage, spoligotype, SIT, family)))

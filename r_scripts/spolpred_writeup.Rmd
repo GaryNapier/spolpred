@@ -327,7 +327,15 @@ write.csv(manu_spol, "../results/manu_spol.csv", row.names = F, quote = F)
 # e.g. some L1 samps are AFRI, which is clearly not correct
 lin_fam_freq_tab <- as.data.frame.matrix(table(lin_fam_merged$family_group, lin_fam_merged$main_lin))
 
-# Make a table of the 'proper' correspondence between main lin and family group, taking out the anomalous ones from the freq table
+# Get numbers for spol families
+n_samps_family <- data.frame(as.list(sort(rowSums(lin_fam_freq_tab), decreasing = T)))
+
+# Clean and add totals for display
+lin_fam_freq_tab <- cbind(Family = row.names(lin_fam_freq_tab), lin_fam_freq_tab)
+lin_fam_freq_tab <- adorn_totals(lin_fam_freq_tab, where = c("row", "col"))
+
+# Make a table of the 'proper' correspondence between main lin and family group, 
+# taking out the anomalous ones from the freq table
 main_lin_family_group <- unique(select(lin_fam_merged, main_lin, family_group))
 main_lin_family_group <- subset(main_lin_family_group, !is.na(family_group))
 main_lin_family_group <- subset(main_lin_family_group, !(family_group == "Unknown"))
@@ -356,7 +364,6 @@ names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
 
 ```{r geo, echo = F, warning=F, message=F}
 
-
 # Clean metadata regions
 metadata$subregion <- ifelse(metadata$subregion == "Australia and New Zealand", "Oceana", metadata$subregion)
 metadata$subregion <- ifelse(metadata$subregion == "Northern America", "North America", metadata$subregion)
@@ -375,6 +382,10 @@ unknown_row <- subset(region_family_tab, Region == "Unknown")
 region_family_tab <- subset(region_family_tab, !(Region == "Unknown"))
 region_family_tab <- rbind(region_family_tab, unknown_row)
 
+# Get geo numbers
+n_samps_geo <- data.frame(as.list(sort(rowSums(select(region_family_tab, -Region) ), decreasing = T) ))
+
+# Wrangle for plot
 region_family_tab_plot <- region_family_tab %>% gather(Family, value, -Region)
 
 # Plot
@@ -410,7 +421,6 @@ spol_data <- select(spol_data, sample, lineage, spoligotype)
 # write.csv(animal, file = paste0(data_path, "animal_spol_data.csv"), 
 #           quote = F, row.names = F)
 spol_data <- subset(spol_data, !(grepl("La", lineage)))
-
 
 # Expand lineages, rbind animal back in and merge
 exp <- expand_hierarchy_fill(spol_data, "sample", "lineage")
@@ -666,7 +676,39 @@ These calculations yield a measure of how purely associated each spoligotype is 
 
 **Global distribution of spoligotype families**
 
-The most frequent spoligotype family in our data belongs to Beijing (8,056), followed by T (6,000) and LAM (4,229). The most common geographical regions in which our samples are found were Northern Europe (5,018), Southern Africa (4,488) and Southeast Asia (3,650). **Figure \@ref(fig:region-family-plot)** shows the frequency of samples gathered in a geographical region versus the spoligotype family. While many samples occur in their expected geographical region, there is much variation as to where in the world a spoligotype family is found. The geographical distribution of our data with respect to spoligotype family perhaps reflects samples being taken as part of transmission studies or other clinically relevant investigation. 
+```{r family-numbers, echo = F, warning=F, message=F}
+
+beijing_n <- fmt(n_samps_family$Beijing)
+beijing_pc <- fmt_pc(n_samps_family$Beijing/n_total_samps_before_filter)
+
+T_n <- fmt(n_samps_family$T)
+T_pc <- fmt_pc(n_samps_family$T/n_total_samps_before_filter)
+
+LAM_n <- fmt(n_samps_family$LAM)
+LAM_pc <- fmt_pc(n_samps_family$LAM/n_total_samps_before_filter)
+
+unknown_family_n <- fmt(n_samps_family$Unknown)
+unknown_family_pc <- fmt_pc(n_samps_family$Unknown/n_total_samps_before_filter)
+
+```
+
+```{r geo-numbers, echo = F, warning=F, message=F}
+
+northern_europe_n <- fmt(n_samps_geo$Northern.Europe)
+northern_europe_pc <- fmt_pc(n_samps_geo$Northern.Europe/n_total_samps_before_filter)
+
+southern_africa_n <- fmt(n_samps_geo$Southern.Africa)
+southern_africa_pc <- fmt_pc(n_samps_geo$Southern.Africa/n_total_samps_before_filter)
+
+se_asia_n <- fmt(n_samps_geo$Southeast.Asia)
+se_asia_pc <- fmt_pc(n_samps_geo$Southeast.Asia/n_total_samps_before_filter)
+
+unknown_geo_n <- fmt(n_samps_geo$Unknown)
+unknown_geo_pc <- pmt_pc(n_samps_geo$Unknown/n_total_samps_before_filter)
+
+```
+
+The most frequent spoligotype family in our data belongs to Beijing (`r beijing_n`; `r beijing_pc`), followed by T (`r T_n`; `r T_pc`) and LAM (`r LAM_n`; `r LAM_pc`), though many samples had an unknown family (`r unknown_family_n`; `r unknown_family_pc`). The most common geographical regions in which our samples are found were Northern Europe (`r northern_europe_n`; `r northern_europe_pc`), Southern Africa (`r southern_africa_n`; `r southern_africa_pc`) and Southeast Asia (`r se_asia_n`; `r se_asia_pc`), as with family, many samples were of unknown origin (`r unknown_geo_n`; `r unknown_geo_pc`). **Figure \@ref(fig:region-family-plot)** shows the frequency of samples gathered in a geographical region versus the spoligotype family. While many samples occur in their expected geographical region, there is much variation as to where in the world a spoligotype family is found. The discordance of geographical distribution with respect to spoligotype family in our data perhaps reflects samples being taken as part of transmission studies or other clinically relevant investigation. 
 
 **Association of spoligotypes to lineages**
 
@@ -684,7 +726,7 @@ The levels show decreasing numbers and proportions of samples with pure spoligot
 
 Although many spoligotypes were shown to be purely associated to a lineage, even to the lowest lineage level, a significant number of these were in a small proportion of the lineage samples. On the other hand, a number of spoligotypes were less predictive of lineage, but appeared in a large proportion of the lineage samples. These latter spoligotypes are of course more likely to be encountered, and so although they have a lower purity score, should be considered useful. 
 
-The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pure_pc_list$lv1`% at the first lineage level to `r pure_pc_list$lv4`% at the fourth, indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
+The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pc(pure_pc_list$lv1)` at the first lineage level to `r pc(pure_pc_list$lv4`) at the fourth, indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
 
 ## Conclusions
 
@@ -791,7 +833,7 @@ PINI2 = *M. pinnipedii* (animal)
 
 cap <- "Frequency table of samples by main lineage and spoligotype family"
 
-knitr::kable(fmt(lin_fam_freq_tab), row.names = T, caption = cap, format = "pipe")
+knitr::kable(fmt(lin_fam_freq_tab), row.names = F, caption = cap, format = "pipe")
 
 
 ```
