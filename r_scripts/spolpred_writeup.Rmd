@@ -33,6 +33,7 @@ library(stringr)
 library(ggplot2)
 library(tidyverse)
 library(tidyr)
+library(janitor)
 
 ```
 
@@ -375,30 +376,37 @@ lin_fam_geo_df <- merge(lin_fam_merged, geo_df, by.x = "sample", by.y = "wgs_id"
 
 # Make table of region and spol family
 region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
-region_family_tab <- cbind(Region = row.names(region_family_tab), region_family_tab)
+# region_family_tab <- cbind(Region = row.names(region_family_tab), region_family_tab)
 
-# Clean
+# Get geo numbers
+n_samps_geo <- data.frame(as.list(sort(rowSums(region_family_tab), decreasing = T) ))
+
+# Wrangle for plot
+# Normalise across row (Have to transpose for some reason. Stupid!)
+region_family_tab <- cbind(Region = row.names(region_family_tab),
+      data.frame(t(apply(num_cols(region_family_tab), 1, function(x) {round(x/sum(x), 2)}))))
+
+# Clean - re-arrange unknown
 unknown_row <- subset(region_family_tab, Region == "Unknown")
 region_family_tab <- subset(region_family_tab, !(Region == "Unknown"))
 region_family_tab <- rbind(region_family_tab, unknown_row)
 
-# Get geo numbers
-n_samps_geo <- data.frame(as.list(sort(rowSums(select(region_family_tab, -Region) ), decreasing = T) ))
-
-# Wrangle for plot
+# Make long format for heatmap
 region_family_tab_plot <- region_family_tab %>% gather(Family, value, -Region)
 
 # Plot
 max_n <- round_any(max(region_family_tab_plot$value), 1000)
 leg_ticks <- c(0, 10, 100, 1000, 2000)
 leg_breaks <- replace_inf(log(leg_ticks))
+# region_family_plot <- ggplot(data = region_family_tab_plot, 
+#             aes(x = Family, y = Region, fill = log(value+1))) +
 region_family_plot <- ggplot(data = region_family_tab_plot, 
-            aes(x = Family, y = Region, fill = log(value+1))) +
+            aes(x = Family, y = Region, fill = value)) +
   geom_tile()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  scale_fill_continuous(breaks = leg_breaks, 
-                        labels = leg_ticks, 
-                        name = "n")+
+  # scale_fill_continuous(breaks = leg_breaks, 
+  #                       labels = leg_ticks, 
+  #                       name = "n")+
   geom_text(aes(label = value), color = "white", size = 2.25)+ 
   scale_y_discrete(limits=rev)+
   coord_fixed()
@@ -612,22 +620,25 @@ ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 
 
 **Genome Medicine:**
 
-**Abstract**
+### Abstract
 
 **Background:** Strain-types of *Mycobacterium tuberculosis*, the bacterial pathogen underlying tuberculosis disease (TB), have been associated with drug resistance, transmissibility, virulence, and host-pathogen interactions. Spoligotyping is an established genotyping technique, and historically used to describe strain-types globally. Advances in sequencing technologies have led to whole genome characterisation and determination of barcoding mutations for strain-types through a sub-lineage nomenclature. Given the large number of *M. tuberculosis*, there is a need to update the *in silico* profiling of spoligotypes, and link it to established sub-lineages. 
 
 **Results:** 
-    - Updating of spolpred and codes, software
-    - Distributions of spoligotypes globally….
-    - Correlation with new sublineage system.
 
-**Conclusions:** 
+  - XXX Updating of spolpred and codes, software XXX
+    
+  - [XXX Distributions of spoligotypes globally. XXX] Although the geographical sources of our samples somewhat agreed with the phylogeographical spoligotype families, there were many exceptions, though this may be a reflection of sampling bias.  
+    
+  - [ XXX Correlation with new sublineage system. XXX ] We found that many spoligotypes were purely associated with the main MTBC lineages as well as the second level of the hierarchical MTBC lineage clades. Conversely, many spoligotyopes that were less purely associated with lineages nevertheless appeared in a large proportion of those lineages. At lower levels of the lineage system there were fewer spoligotypes purely associated with those lineages. A full table of results can be found at github.com/GaryNapier/spolpred/blob/master/results/spol_lin_levels_table.csv
+
+**Conclusions:** We present a faster more streamlined software for predicting spoligotypes *in silico* from WGS. Soligotypes are usefully predictive of lineage at the first two hierarchical lineage levels.  
 
 **URL:** link to new spolpred2
 
 **Keywords:** *Mycobacterium tuberculosis*, spoligotypes, lineages, phylogeny, spolpred
 
-## Background
+### Background
 
 <!-- Napier [@Napier2020] -->
 <!-- Brudey [@Brudey2006] -  spoligotyping database  -->
@@ -660,7 +671,7 @@ Appearance of all 43 queries is eventually translated into the octal code which 
 
 The software was run on 40k Mtb
 
-## Methods
+### Methods
 
 **Association of spoligotypes to lineages**
 
@@ -672,7 +683,7 @@ Our calculation proceeded as follows: At each lineage level, a frequency table w
       
 These calculations yield a measure of how purely associated each spoligotype is to each lineage, at each level. A score of 1 for a spoligotype-lineage combination means a spoligotype only appears in that particular lineage. For example, spoligotype 1001111111111111111111111111000010110001111 scores 1 for lineage 1.1, meaning this spoligotype is only found in this lineage and no others (at the second level of the lineage system). 
 
-## Results
+### Results
 
 **Global distribution of spoligotype families**
 
@@ -704,7 +715,7 @@ se_asia_n <- fmt(n_samps_geo$Southeast.Asia)
 se_asia_pc <- fmt_pc(n_samps_geo$Southeast.Asia/n_total_samps_before_filter)
 
 unknown_geo_n <- fmt(n_samps_geo$Unknown)
-unknown_geo_pc <- pmt_pc(n_samps_geo$Unknown/n_total_samps_before_filter)
+unknown_geo_pc <- fmt_pc(n_samps_geo$Unknown/n_total_samps_before_filter)
 
 ```
 
@@ -722,17 +733,38 @@ At the first lineage level (lineages 1-7), there were `r pure_n_list$lv1` (`r pc
 
 The levels show decreasing numbers and proportions of samples with pure spoligotypes (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)), but the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure_list$lv2`, third level: `r med_pc_samps_pure_list$lv3`, fourth level: `r med_pc_samps_pure_list$lv4`) (**Figure \@ref(fig:spol-lin-results-plot-display)**). 
 
-## Discussion
+### Discussion
 
 Although many spoligotypes were shown to be purely associated to a lineage, even to the lowest lineage level, a significant number of these were in a small proportion of the lineage samples. On the other hand, a number of spoligotypes were less predictive of lineage, but appeared in a large proportion of the lineage samples. These latter spoligotypes are of course more likely to be encountered, and so although they have a lower purity score, should be considered useful. 
 
-The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pc(pure_pc_list$lv1)` at the first lineage level to `r pc(pure_pc_list$lv4`) at the fourth, indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
+The percentage of spoligotypes purely associated to a lineage decreased significantly from `r pc(pure_pc_list$lv1)` at the first lineage level to `r pc(pure_pc_list$lv4)`) at the fourth, indicating that spoligotypes in general are only usefully predictive of perhaps the first two levels. 
 
-## Conclusions
+### Conclusions
 
-## Availability and requirements**
+### Availability and requirements**
 
-## List of abbreviations
+### List of abbreviations
+
+|||
+|:----|:----------------|
+| AFRI | *M. africanum* |
+| BOV | *M. bovis* (animal) |
+| CAS | Central Asian Strains |
+| DR | Direct repeat |
+| EAI | East-African-Indian |
+| H | Haarlem |
+| L | Lineage |
+| LAM | Latin America-Mediterranean |
+| *Mtb* | *Mycobacterium tuberculosis* | 
+| MTBC | *Mycobacterium tuberculosis* complex |
+| PCR | Polymerase chain reaction |
+| PINI2 | *M. pinnipedii* (animal) |
+| RD | Region of difference |
+| S | XXX |
+| SNP | Single nucleotide polymorphism |
+| T | Ghana XXX ? - CHECK XXX |
+| WGS | Whole genome sequencing |
+
 
 **Declarations**
 
@@ -793,7 +825,7 @@ knitr::include_graphics(lin5_6_8_9_La_ggtree)
 
 ```
 
-```{r region-family-plot, echo = F, warning=F, fig.cap="Heatmap of number of samples by spoligotype family and region of sample collection"}
+```{r region-family-plot, echo = F, warning=F, fig.cap="Heatmap of samples by spoligotype family and region of sample collection, normalised by Region (row)."}
 
 knitr::include_graphics(region_family_plot_file)
 
