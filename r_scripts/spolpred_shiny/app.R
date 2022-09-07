@@ -48,7 +48,7 @@ ui <- fluidPage(
      "Columns:", 
      tags$br(), 
      tags$br(), 
-     "- Level: Level of the lineage hierarchy (e.g. 1 = level 1, 1.1 = level 2, 1.1.1 = level 3 etc.",
+     "- Level: Level of the lineage hierarchy (e.g. 1 = level 1, 1.1 = level 2, 1.1.1 = level 3 etc.)",
      tags$br(), 
      "- Lineage: Lineages in Napier (2020).",
      tags$br(), 
@@ -69,7 +69,7 @@ ui <- fluidPage(
    h5(tags$div(
      "References: ", 
      tags$br(), 
-     "* Napier, G., Campino, S., Merid, Y. et al. Robust barcoding and identification of Mycobacterium tuberculosis lineages for epidemiological and clinical studies. Genome Med 12, 114 (2020). https://doi.org/10.1186/s13073-020-00817-3", 
+     "Napier, G., Campino, S., Merid, Y. et al. Robust barcoding and identification of Mycobacterium tuberculosis lineages for epidemiological and clinical studies. Genome Med 12, 114 (2020). https://doi.org/10.1186/s13073-020-00817-3", 
      tags$br(), 
      "Phelan, J. E. et al. Integrating informatics tools and portable sequencing technology for rapid detection of resistance to anti-tuberculous drugs. Genome Med. 11, 41 (2019).", 
      tags$br(), 
