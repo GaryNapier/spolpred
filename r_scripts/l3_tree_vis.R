@@ -70,6 +70,7 @@ ggtree_strip_cols <- function(x, alpha = 0.7){
 
 dark_to_light <- function(lin_names, first_col){
   if(length(lin_names) == 1){
+    names(first_col) <- lin_names
     return(first_col)
   }else{
     lighten_to_col <- lighten(first_col, 1-(1/(length(lin_names))))
@@ -175,6 +176,7 @@ l4_tree <- keep.tip(l4_tree, sample(l4_tree$tip.label, floor(length(l4_tree$tip.
 
 # Clean family
 spol_data$family <- ifelse(spol_data$family == "", "Unknown", spol_data$family)
+spol_data$family <- ifelse(spol_data$family == "Zero-copy", "Unknown", spol_data$family)
 
 # Merge in family group
 spol_data <- merge(spol_data, select(family_lookup, family, family_group), by = "family", all.x = T)
@@ -188,7 +190,8 @@ rownames(spol_data) <- spol_data$sample
 lin_lv1_data_ggplot <- select(spol_data, lin_level_1)
 lin_lv2_data_ggplot <- select(spol_data, lin_level_2)
 spol_data_ggplot <- select(spol_data, s1:s43)
-family_data <- select(spol_data, family_group)
+family_data <- select(spol_data, family)
+family_group_data <- select(spol_data, family_group)
 
 # Colours ----
 
@@ -248,12 +251,43 @@ l5_6_8_9_La_lv2_cols <- c(lv2_cols_list$lineage5,
 
 # Family cols
 
-family_cols <- unique(family_lookup$colour)
-names(family_cols) <- unique(family_lookup$family_group)
+# family_cols <- unique(family_lookup$colour)
+# names(family_cols) <- unique(family_lookup$family_group)
+
+family_lookup_split <- split(family_lookup, family_lookup$family_group)
+
+family_cols <- unlist(lapply(family_lookup_split, function(x){
+  # n_fams <- nrow(x)
+  # if(n_fams < 5){
+    dark_to_light(x$family, unique(x$colour))
+  # }else{
+  #   cols <- rainbow(n_fams, alpha = 0.7)
+  #   names(cols) <- x$family
+  #   cols
+  # }
+}))
+names(family_cols) <- gsub(".*\\.", "", names(family_cols))
+
+# Create subseted data because the legend prints out all the colours.. christ. 
+l2_family_data <- subset(family_data, row.names(family_data) %in% l2_tree$tip.label)
+l2_family_cols <- family_cols[names(family_cols) %in% unique(l2_family_data$family)]
+
+l3_family_data <- subset(family_data, row.names(family_data) %in% l3_tree$tip.label)
+l3_family_cols <- family_cols[names(family_cols) %in% unique(l3_family_data$family)]
+
+l4_family_data <- subset(family_data, row.names(family_data) %in% l4_tree$tip.label)
+l4_family_cols <- family_cols[names(family_cols) %in% unique(l4_family_data$family)]
+
+l1_7_family_data <- subset(family_data, row.names(family_data) %in% l1_7_tree$tip.label)
+l1_7_family_cols <- family_cols[names(family_cols) %in% unique(l1_7_family_data$family)]
+
+l5_6_8_9_La_family_data <- subset(family_data, row.names(family_data) %in% l5_6_8_9_La_tree$tip.label)
+l5_6_8_9_La_family_cols <- family_cols[names(family_cols) %in% unique(l5_6_8_9_La_family_data$family)]
+
 
 # Plot ----
 
-do_tree <- "2"
+do_tree <- "4"
 
 # Set up ggtree parameters 
 width <- 0.05 # Heatmap width
@@ -284,14 +318,14 @@ if(do_tree == "2"){
   l2_ggtree <- l2_ggtree + ggnewscale::new_scale_fill()
   
   # Family
-  l2_ggtree <- gheatmap(l2_ggtree, family_data,
+  l2_ggtree <- gheatmap(l2_ggtree, l2_family_data,
                         color = NA, 
                         width = width,
                         offset = family_os,
                         colnames = F)+
-    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
+    scale_fill_manual(values = l2_family_cols, breaks = names(l2_family_cols) )+
     labs(fill = "Family")
-  
+
   l2_ggtree <- l2_ggtree + ggnewscale::new_scale_fill()
   
   # Spoligotype
@@ -305,7 +339,9 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineage 2")
   
-  ggsave(file = paste0(results_path, "lin2_ggtree.png"), plot = l2_ggtree, width = png_width, height = png_width, units = "mm")
+  ggsave(file = paste0(results_path, "lin2_ggtree.png"), 
+         plot = l2_ggtree, 
+         width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin2_ggtree.svg"), plot = l2_ggtree)
   
 # L3
@@ -325,12 +361,12 @@ if(do_tree == "2"){
   l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
   
   # Family
-  l3_ggtree <- gheatmap(l3_ggtree, family_data,
+  l3_ggtree <- gheatmap(l3_ggtree, l3_family_data,
                         color = NA, 
                         width = width,
                         offset = family_os,
                         colnames = F)+
-    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
+    scale_fill_manual(values = l3_family_cols, breaks = names(l3_family_cols) )+
     labs(fill = "Family")
   
   l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
@@ -346,7 +382,8 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineage 3")
   
-  ggsave(file = paste0(results_path, "lin3_ggtree.png"), plot = l3_ggtree, width = png_width, height = png_width, units = "mm")
+  ggsave(file = paste0(results_path, "lin3_ggtree.png"), 
+         plot = l3_ggtree, width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin3_ggtree.svg"), plot = l3_ggtree)
 
 }else if(do_tree == "4"){
@@ -363,14 +400,16 @@ if(do_tree == "2"){
   l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
 
   # Family
-  l4_ggtree <- gheatmap(l4_ggtree, family_data, color = NA, width = width*2, offset = family_os*0.75, colnames = F)+
-    scale_fill_manual(values = family_cols, breaks = names(family_cols) )+
+  l4_ggtree <- gheatmap(l4_ggtree, l4_family_data, 
+                        color = NA, width = width*2, offset = family_os*0.75, colnames = F)+
+    scale_fill_manual(values = l4_family_cols, breaks = names(l4_family_cols) )+
     labs(fill = "Family")
   
   l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
 
   # Spoligotype
-  l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot, offset = spol_os*0.75, color = NA, low="white", high="black", colnames = F) +
+  l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot, 
+                        offset = spol_os*0.75, color = NA, low="white", high="black", colnames = F) +
     scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
     labs(fill = "Spoligotype")+
     ggtitle("Lineage 4")+
@@ -411,13 +450,14 @@ if(do_tree == "2"){
   
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
   
-  l1_7_ggtree <- gheatmap(l1_7_ggtree, family_data,
+  # Family
+  l1_7_ggtree <- gheatmap(l1_7_ggtree, l1_7_family_data,
                           color = NA,
                           width = width,
                           offset = family_os*4,
                           colnames = F)+
-    scale_fill_manual(values = family_cols,
-                      breaks = names(family_cols), 
+    scale_fill_manual(values = l1_7_family_cols,
+                      breaks = names(l1_7_family_cols), 
                       name = "Family")
   
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
@@ -456,13 +496,13 @@ if(do_tree == "2"){
   l5_6_8_9_La_ggtree <- l5_6_8_9_La_ggtree + ggnewscale::new_scale_fill()
   
   # Family
-  l5_6_8_9_La_ggtree <- gheatmap(l5_6_8_9_La_ggtree, family_data,
+  l5_6_8_9_La_ggtree <- gheatmap(l5_6_8_9_La_ggtree, l5_6_8_9_La_family_data,
                                  color = NA,
                                  width = width*2.5,
                                  offset = family_os*5,
                                  colnames = F)+
-    scale_fill_manual(values = family_cols, 
-                      breaks = names(family_cols), 
+    scale_fill_manual(values = l5_6_8_9_La_family_cols, 
+                      breaks = names(l5_6_8_9_La_family_cols), 
                       name = "Family")
   
   l5_6_8_9_La_ggtree <- l5_6_8_9_La_ggtree + ggnewscale::new_scale_fill()
