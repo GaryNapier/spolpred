@@ -373,16 +373,22 @@ metadata$subregion <- ifelse(metadata$subregion == "Australia and New Zealand", 
 metadata$subregion <- ifelse(metadata$subregion == "Northern America", "North America", metadata$subregion)
 metadata$subregion <- ifelse(metadata$subregion == "#N/A", "Unknown", metadata$subregion)
 
+
 # Merge in WHO regions
 metadata <- merge(metadata, 
                   select(regions_lookup, country_code_lower, WHO_region),
                   by.x = "country_code", 
                   by.y = "country_code_lower", 
+                  all.x = T,
                   sort = F)
+
+# Add unknown
+metadata$WHO_region <- ifelse(is.na(metadata$WHO_region), "Unknown", metadata$WHO_region)
 
 # Merge metadata to spol family data
 geo_df <- select(metadata, wgs_id, country_code, country, region, subregion, WHO_region)
-lin_fam_geo_df <- merge(lin_fam_merged, geo_df, by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
+lin_fam_geo_df <- merge(lin_fam_merged, geo_df, 
+                        by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
 
 # Make table of region and spol family
 # region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
@@ -425,6 +431,7 @@ region_family_plot <- ggplot(data = region_family_tab_plot,
             aes(x = Region, y = Family, fill = value)) +
   geom_tile()+
   geom_text(aes(label = value), color = "white", size = 3)+ 
+  xlab("WHO region")+
   scale_y_discrete(limits=rev)+
   theme_bw()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1), 
@@ -846,21 +853,35 @@ unknown_family_pc <- fmt_pc(n_samps_family$Unknown/n_total_samps_before_filter)
 
 ```{r geo-numbers, echo = F, warning=F, message=F}
 
-northern_europe_n <- fmt(n_samps_geo$Northern.Europe)
-northern_europe_pc <- fmt_pc(n_samps_geo$Northern.Europe/n_total_samps_before_filter)
+# Subregions
+# northern_europe_n <- fmt(n_samps_geo$Northern.Europe)
+# northern_europe_pc <- fmt_pc(n_samps_geo$Northern.Europe/n_total_samps_before_filter)
+# 
+# southern_africa_n <- fmt(n_samps_geo$Southern.Africa)
+# southern_africa_pc <- fmt_pc(n_samps_geo$Southern.Africa/n_total_samps_before_filter)
+# 
+# se_asia_n <- fmt(n_samps_geo$Southeast.Asia)
+# se_asia_pc <- fmt_pc(n_samps_geo$Southeast.Asia/n_total_samps_before_filter)
+# 
+# unknown_geo_n <- fmt(n_samps_geo$Unknown)
+# unknown_geo_pc <- fmt_pc(n_samps_geo$Unknown/n_total_samps_before_filter)
 
-southern_africa_n <- fmt(n_samps_geo$Southern.Africa)
-southern_africa_pc <- fmt_pc(n_samps_geo$Southern.Africa/n_total_samps_before_filter)
+# WHO regions
+n_europe <- fmt(n_samps_geo$Europe)
+pc_europe <- fmt_pc(n_samps_geo$Europe/n_total_samps_before_filter)
 
-se_asia_n <- fmt(n_samps_geo$Southeast.Asia)
-se_asia_pc <- fmt_pc(n_samps_geo$Southeast.Asia/n_total_samps_before_filter)
+n_africa <- fmt(n_samps_geo$Africa)
+pc_africa <- fmt_pc(n_samps_geo$Africa/n_total_samps_before_filter)
+
+n_w_pacific <- fmt(n_samps_geo$Western.Pacific)
+pc_w_pacific <- fmt_pc(n_samps_geo$Western.Pacific/n_total_samps_before_filter)
 
 unknown_geo_n <- fmt(n_samps_geo$Unknown)
 unknown_geo_pc <- fmt_pc(n_samps_geo$Unknown/n_total_samps_before_filter)
 
 ```
 
-The most frequent spoligotype family in our data belongs to Beijing (`r beijing_n`; `r beijing_pc`), followed by T (`r T_n`; `r T_pc`) and LAM (`r LAM_n`; `r LAM_pc`), though many samples had an unknown family (`r unknown_family_n`; `r unknown_family_pc`). The most common geographical regions in which our samples are found were Northern Europe (`r northern_europe_n`; `r northern_europe_pc`), Southern Africa (`r southern_africa_n`; `r southern_africa_pc`) and Southeast Asia (`r se_asia_n`; `r se_asia_pc`), as with family, many samples were of unknown origin (`r unknown_geo_n`; `r unknown_geo_pc`). **Figure \@ref(fig:region-family-plot)** shows the frequency of samples gathered in a geographical region versus the spoligotype family. While many samples occur in their expected geographical region, there is much variation as to where in the world a spoligotype family is found. The discordance of geographical distribution with respect to spoligotype family in our data perhaps reflects samples being taken as part of transmission studies or other clinically relevant investigation. 
+The most frequent spoligotype family in our data belongs to Beijing (`r beijing_n`; `r beijing_pc`), followed by T (`r T_n`; `r T_pc`) and LAM (`r LAM_n`; `r LAM_pc`), though many samples had an unknown family (`r unknown_family_n`; `r unknown_family_pc`). The most common WHO geographical regions in which our samples are found were Europe (`r n_europe`; `r pc_europe`), Africa (`r n_africa`; `r pc_africa`) and Western Pacific (`r n_w_pacific`; `r pc_w_pacific`). As with family, many samples were of unknown origin (`r unknown_geo_n`; `r unknown_geo_pc`). **Figure \@ref(fig:region-family-plot)** shows the frequency of samples gathered in a WHO geographical region versus the spoligotype family. While many samples occur in their expected geographical region, there is much variation as to where in the world a spoligotype family is found. The discordance of geographical distribution with respect to spoligotype family in our data perhaps reflects samples being taken as part of transmission studies or other clinically relevant investigation. 
 
 **Association of spoligotypes to lineages**
 
