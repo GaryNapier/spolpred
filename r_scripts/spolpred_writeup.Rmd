@@ -223,6 +223,13 @@ replace_inf <- function(x){
   x
 }
 
+add_pc_brkt <- function(df, col, rnd = 1){
+  pcs <- round(df[, col]/sum(df[, col])*100, rnd)
+  df <- fmt(df)
+  df[, col] <- paste0(df[, col], " (", pcs, ")")
+  df
+}
+
 ```
 
 ```{r variables, echo = F, warning=F, message=F}
@@ -699,6 +706,90 @@ names(table_1_display) <- c("Characteristic",
 
 ```
 
+
+```{r table-2, echo = F, warning=F, message=F}
+
+# Table 2
+# Numbers of samples and unique spoligotypes for sub-lineages* across 27,933 M. tuberculosis
+
+# NB USE FILTERED DATASET - spol_data
+
+# Add the family and family group in
+spol_data <- merge(spol_data, 
+                   dplyr::select(lin_fam_merged, family, sample, family_group),
+                   by = "sample", 
+                   all.x = T, 
+                   sort = F)
+
+
+
+
+n_pivot_lv1 <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_samp', 
+                               value.var = "sample", fun.aggregate = len_uniq)
+
+spol_pivot_lv1 <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_spol',
+                                  value.var = "spoligotype", fun.aggregate = len_uniq)
+
+fam_pivot_lv1 <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_fam',
+                                  value.var = "family", fun.aggregate = len_uniq)
+
+n_pivot_lv1 <- add_pc_brkt(n_pivot_lv1, "n_samp")
+spol_pivot_lv1 <- add_pc_brkt(spol_pivot_lv1, "n_spol")
+fam_pivot_lv1 <- add_pc_brkt(fam_pivot_lv1, "n_fam")
+
+lv1_df <- data.frame(cbind(lineage = n_pivot_lv1$lin_level_1,
+                           sublineage = rep("Overall", nrow(n_pivot_lv1)), 
+                           n_samp = n_pivot_lv1$n_samp, 
+                           n_spol = spol_pivot_lv1$n_spol, 
+                           n_fam = fam_pivot_lv1$n_fam))
+
+
+# Level 2
+n_pivot_lv2 <- reshape2::dcast(spol_data, lin_level_1 + lin_level_2 ~ 'n_samp', 
+                                   value.var = "sample", fun.aggregate = len_uniq)
+
+spol_pivot_lv2 <- reshape2::dcast(spol_data, lin_level_1 + lin_level_2 ~ 'n_spol', 
+                                   value.var = "spoligotype", fun.aggregate = len_uniq)
+
+fam_pivot_lv2 <- reshape2::dcast(spol_data, lin_level_1 + lin_level_2 ~ 'n_fam', 
+                                   value.var = "family", fun.aggregate = len_uniq)
+
+n_pivot_lv2 <- add_pc_brkt(n_pivot_lv2, "n_samp")
+spol_pivot_lv2 <- add_pc_brkt(spol_pivot_lv2, "n_spol")
+fam_pivot_lv2 <- add_pc_brkt(fam_pivot_lv2, "n_fam")
+
+lv2_df <- data.frame(cbind(lineage = n_pivot_lv2$lin_level_1,
+                          sublineage = n_pivot_lv2$lin_level_2, 
+                          n_samp = n_pivot_lv2$n_samp, 
+                          n_spol = spol_pivot_lv2$n_spol, 
+                          n_fam = fam_pivot_lv2$n_fam))
+
+# Split and r-bind the two tables
+lv1_df_split <- split(lv1_df, lv1_df$lineage)
+lv2_df_split <- split(lv2_df, lv2_df$lineage)
+
+for(i in seq(length(lv1_df_split))){
+  lv2 <- lv2_df_split[[i]]
+  if(nrow(lv2) > 1){
+    lv2_df_split[[i]] <- rbind(lv1_df_split[[i]], lv2)
+  }else{
+    lv2_df_split[[i]] <- lv1_df_split[[i]]
+  }
+}
+# Put back together
+lv1_lv2_n_spol_fam <- do.call("rbind", lv2_df_split)
+
+# Clean
+lv1_lv2_n_spol_fam <- rm_dup_group(lv1_lv2_n_spol_fam, "lineage")
+names(lv1_lv2_n_spol_fam) <- c("Lineage", 
+                               "Sub-lineage", 
+                               "N (%)", 
+                               "No. spoligotypes", 
+                               "No. families")
+
+```
+
+
 ```{r spol-lin-results, echo = F, warning=F, message=F}
 
 # Split out by lin level
@@ -1145,6 +1236,17 @@ cap <- sprintf("*M. tuberculosis* dataset (n=%s)", n_total_samps_before_filter)
 knitr::kable(table_1_display, row.names = F, caption = cap, format = "pipe")
 
 ```
+
+
+```{r lv1-lv2-n-spol-fam-show, echo = F, warning=F}
+
+cap <- sprintf("Numbers of samples and unique spoligotypes for sub-lineages\* across %s *M. tuberculosis*",
+               n_total_samps_after_filter)
+
+knitr::kable(lv1_lv2_n_spol_fam, row.names = F, caption = cap, format = "pipe")
+
+```
+\*after filtering out spoligotypes occurring in fewer than five samples; Lineage 461 spols vs. sub 703 spols 
 
 <!-- # ```{r main-lin-fam-group-tab, echo = F, warning=F} -->
 <!-- # -->
