@@ -680,23 +680,22 @@ who_pivot$pc <- round(who_pivot$n_samp/sum(who_pivot$n_samp)*100, 1)
 # who_pivot
 
 table_1 <- rbind_force(lin_lv1_pivot, rbind_force(fam_pivot, who_pivot))
+table_1 <- cbind(Characteristic = c(rep("Lineage", nrow(lin_lv1_pivot)), 
+                                    rep("Spoligotype", nrow(fam_pivot)), 
+                                    rep("WHO region", nrow(who_pivot))), 
+                 table_1)
 
+# Make copy for display
+table_1_display <- table_1
 
-
-
-
-table_1 <- rm_dup_group(table_1, "level")
-
-
-
-
-
-
-
-
-
-
-names(table_1) <- c("Level", "Lineage", "n samples", "n unique spoligotypes")
+# Clean
+table_1_display <- rm_dup_group(table_1_display, "Characteristic")
+table_1_display <- fmt(table_1_display)
+names(table_1_display) <- c("Characteristic", 
+                            "", 
+                            "[# members]*", 
+                            "N", 
+                            "%")
 
 ```
 
@@ -1141,9 +1140,9 @@ knitr::kable(times_df, row.names = F, caption = cap, format = "pipe")
 
 ```{r table-1-show, echo = F, warning=F}
 
-cap <- "Numbers of samples and unique spoligotypes for the first two lineage levels after filtering out spoligotypes occurring in fewer than five samples"
+cap <- sprintf("*M. tuberculosis* dataset (n=%s)", n_total_samps_before_filter)
 
-knitr::kable(table_1, row.names = F, caption = cap, format = "pipe")
+knitr::kable(table_1_display, row.names = F, caption = cap, format = "pipe")
 
 ```
 
