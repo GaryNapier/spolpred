@@ -230,6 +230,13 @@ add_pc_brkt <- function(df, col, rnd = 1){
   df
 }
 
+all_dups <- function(df, col){
+  duped <- df[duplicated(df[, col]), col]
+  duped_df <- df[df[, col] %in% duped, ]
+  duped_df[order(duped_df[, col]),]
+}
+
+
 ```
 
 ```{r variables, echo = F, warning=F, message=F}
@@ -371,6 +378,7 @@ main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
 
 names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
 
+
 ```
 
 ```{r geo, echo = F, warning=F, message=F}
@@ -379,7 +387,6 @@ names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
 metadata$subregion <- ifelse(metadata$subregion == "Australia and New Zealand", "Oceana", metadata$subregion)
 metadata$subregion <- ifelse(metadata$subregion == "Northern America", "North America", metadata$subregion)
 metadata$subregion <- ifelse(metadata$subregion == "#N/A", "Unknown", metadata$subregion)
-
 
 # Merge in WHO regions
 metadata <- merge(metadata, 
@@ -396,6 +403,46 @@ metadata$WHO_region <- ifelse(is.na(metadata$WHO_region), "Unknown", metadata$WH
 geo_df <- select(metadata, wgs_id, country_code, country, region, subregion, WHO_region)
 lin_fam_geo_df <- merge(lin_fam_merged, geo_df, 
                         by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
+
+
+
+
+
+
+
+
+
+# Supplementary table 2
+# Table of spoligotypes (within families), N samples, N sublineages; main sub-lineages % (<5% other); WHO region %; F statistic of heterogeneity….??
+
+# Kepp only spols with at least 5 samps
+# lin_fam_geo_df_filt <- lin_fam_geo_df %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
+
+spol_fam_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + family ~ 'n', 
+                 value.var = 'sample', fun.aggregate = len_uniq)
+
+spol_n_sublin <- reshape2::dcast(lin_fam_geo_df, spoligotype ~ 'n_sublin', 
+                 value.var = 'lineage', fun.aggregate = len_uniq)
+
+
+# spol_lin <- select(lin_fam_geo_df, spoligotype, lineage)
+
+spol_lin_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + lineage ~ 'n', 
+                 value.var = 'sample', fun.aggregate = len_uniq)
+
+
+spol_lin_n_split <- split(spol_lin_n, spol_lin_n$spoligotype)
+
+x <- head(spol_lin_n_split[unlist(lapply(spol_lin_n_split, function(x){nrow(x) > 1}))], 10)
+
+
+x
+
+
+
+
+
+
 
 # Make table of region and spol family
 # region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
@@ -456,7 +503,20 @@ ggsave(plot = region_family_plot,
 
 ```{r clean-spol-data-ctnd, echo = F, warning=F, message=F}
 
-# Just retain sample, lin and spol cols 
+# Prepare data fro r-binding with animal. 
+
+# head(animal)
+# sample        lineage spoligotype lin_level_1 lin_level_2 lin_level_3 lin_level_4 lin_level_5
+# ERR3275518     La1      1...0          La         La1         La1         La1         La1
+# ERR2517357     La1      1...0          La         La1         La1         La1         La1
+
+# Remove spacers 
+spol_data <- dplyr::select(spol_data, -(spacer1:spacer43))
+
+# Retain SIT and family data with sample as key
+samp_sit_fam <- select(spol_data, sample, SIT, family)
+
+# Retain same cols as animal
 spol_data <- select(spol_data, sample, lineage, spoligotype)
 
 # Remove and store animal strains - need to process separately
@@ -477,6 +537,15 @@ spol_data <- merge(spol_data, exp,
 
 # Add animal back in after processing manually
 spol_data <- rbind(spol_data, animal)
+
+
+# Merge SIT and family back in
+spol_data <- merge(spol_data, samp_sit_fam, by = "sample", 
+                   all.x = T, sort = F)
+
+# Add in family group
+spol_data <- merge(spol_data, select(family_lookup, family, family_group), 
+                   by = "family", all.x = T, sort = F)
 
 ```
 
@@ -595,7 +664,6 @@ n_unique_spol_after_filter <- length(unique(spol_data$spoligotype))
 
 ```
 
-
 ```{r table-1-cut, echo = F, warning=F, message=F}
 
 # spol_pivot_lv1 <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_spol', 
@@ -617,7 +685,6 @@ n_unique_spol_after_filter <- length(unique(spol_data$spoligotype))
 # table_1 <- rbind_force(table_1_lv1, table_1_lv2)
 
 ```
-
 
 ```{r table-1, echo = F, warning=F, message=F}
 
@@ -706,23 +773,12 @@ names(table_1_display) <- c("Characteristic",
 
 ```
 
-
 ```{r table-2, echo = F, warning=F, message=F}
 
 # Table 2
 # Numbers of samples and unique spoligotypes for sub-lineages* across 27,933 M. tuberculosis
 
 # NB USE FILTERED DATASET - spol_data
-
-# Add the family and family group in
-spol_data <- merge(spol_data, 
-                   dplyr::select(lin_fam_merged, family, sample, family_group),
-                   by = "sample", 
-                   all.x = T, 
-                   sort = F)
-
-
-
 
 n_pivot_lv1 <- reshape2::dcast(spol_data, lin_level_1 ~ 'n_samp', 
                                value.var = "sample", fun.aggregate = len_uniq)
@@ -789,6 +845,27 @@ names(lv1_lv2_n_spol_fam) <- c("Lineage",
 
 ```
 
+```{r rare-spols-table, echo = F, warning=F, message=F}
+
+# Get the ones that aren't in the filtered df
+rare_spol_df <- subset(spol_data_unfilt, !(spol_data_unfilt$sample %in% spol_data$sample))
+rare_spol_df <- select(rare_spol_df, sample, spoligotype, lineage, family, SIT)
+# Pivot
+rare_spol_df <- reshape2::dcast(rare_spol_df, spoligotype+lineage+family+SIT ~ 'n', 
+                value.var = "sample", fun.aggregate = len_uniq)
+
+# Mark dups
+dups <- all_dups(rare_spol_df, "spoligotype")
+rare_spol_df$dup <- ifelse(rare_spol_df$spoligotype %in% unique(dups$spoligotype), "*", "")
+
+# Clean
+rare_spol_df <- rare_spol_df %>% arrange(spoligotype)                 
+rare_spol_df$spoligotype <- paste0("s", rare_spol_df$spoligotype)
+names(rare_spol_df) <- c("Spoligotype", "Lineage", "Family", "SIT", "N", ">1 lineage")
+
+write.csv(rare_spol_df, file = "../results/rare_spol.csv", quote = F, row.names = F)
+
+```
 
 ```{r spol-lin-results, echo = F, warning=F, message=F}
 
@@ -1078,8 +1155,6 @@ At the first lineage level (lineages 1-7), there were `r pure_n_list$lv1` (`r pc
 
 The lineage levels show decreasing numbers and proportions of samples with spoligotypes scoring 1 (second level: n = `r pure_n_list$lv2` (`r pc(pure_pc_list$lv2)`), third level: n = `r pure_n_list$lv3` (`r pc(pure_pc_list$lv3)`), fourth level: `r pure_n_list$lv4` (`r pc(pure_pc_list$lv4)`)) (**Figure \@ref(fig:level-prob-hist-display)**). Equivalently, the frequency of each spoligotype increased across lineages with each lineage level - at the first level, many spoligotyoes are unique to a lineage and hence only occur once; at the fourth level, more spoligotypes occur more than once indicating they are found in more than one lineage (**Figure \@ref(fig:spol-freq-hist-display)**). However the median percentage of samples with pure spoligotypes, while remaining low very, actually increased (second level: `r med_pc_samps_pure_list$lv2`, third level: `r med_pc_samps_pure_list$lv3`, fourth level: `r med_pc_samps_pure_list$lv4`) (**Figure \@ref(fig:spol-lin-results-plot-display)**). 
 
-
-
 ```{r lowest-lvl-spol-split-nums, echo = F, warning=F, message=F}
 
 n_spols_lv4_split <- length(unique(lv4_filt$spoligotype))
@@ -1208,7 +1283,6 @@ knitr::include_graphics(lin4_ggtree)
 knitr::include_graphics(lin5_6_8_9_La_ggtree)
 
 ```
-
 
 ## TABLES
 
