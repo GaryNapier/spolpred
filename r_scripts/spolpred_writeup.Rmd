@@ -1094,8 +1094,69 @@ ggsave(plot = fam_who_bar, file = fam_who_bar_file,
 
 ```
 
-```{r working, echo = F, warning=F, message=F}
+```{r map, echo = F, warning=F, message=F}
 
+
+
+
+library(scatterpie)
+
+# Family
+
+# At least 5 samples
+fam_who <- subset(lin_fam_geo_df, lin_fam_geo_df$spoligotype %in% lv4$spoligotype)
+# Remove unknown WHO
+fam_who <- subset(fam_who, !(WHO_region == "Unknown"))
+# Make table of region and spol family
+# region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
+region_family_tab <- as.data.frame.matrix(table(fam_who$WHO_region, fam_who$family_group))
+region_family_tab <- data.frame(cbind(WHO_region = row.names(region_family_tab), region_family_tab))
+
+# Lineage
+who_lin <- as.data.frame.matrix(table(fam_who$WHO_region, fam_who$main_lin))
+who_lin <- cbind(WHO_region = row.names(who_lin), who_lin)
+
+
+world <- map_data('world')
+# Countries at centre of WHO regions
+countries <- c("Democratic Republic of the Congo", "Nicaragua", "Iran", "Belarus", "Bangladesh", "Philippines")
+who_country_df <- data.frame(WHO_region = region_family_tab$WHO_region, countries = countries)
+# Get long lat 
+world_sub <- unique(subset(world, region %in% countries))
+# Get mean long lat for key countries
+long_lat_means <- data.frame(world_sub %>% group_by(region) %>% summarise_at(vars(long, lat), list(mean)))
+who_country_df <- merge(who_country_df, long_lat_means, 
+                        by.x = "countries", by.y = "region", 
+                        all.x = T, sort = F)
+
+region_family_tab <- merge(who_country_df, region_family_tab, by = "WHO_region", all.x = T, sort = F)
+region_family_tab <- merge(region_family_tab, who_lin, by = "WHO_region", all.x = T, sort = F)
+
+fams <- sort(unique(fam_who$family_group))
+lins <- sort(unique(fam_who$main_lin))
+
+# fam_data <- select(region_family_tab, WHO_region, long, lat, AFRI:X)
+# lin_data <- select(region_family_tab, WHO_region, long, lat, "1":La)
+
+fam_cols <- c("#ff0000", "#fa8072", "#dda0dd", "#ff00ff", "#ff1493", "#ffa500", "#ffff00", "#f0e68c", "#006400", "#00ff00", "#00fa9a", "#00008b", "#0000ff", "#1e90ff", "#00ffff", "#2f4f4f")
+lin_cols <- rainbow(length(lins), alpha = 1, s = 0.6, v = 1)
+
+fam_map <- ggplot(world, aes(long, lat))+
+    geom_map(map=world, aes(map_id=region), fill=NA, color="black", size = 0.1)+
+    coord_quickmap()+
+  geom_scatterpie(data = region_family_tab, aes(x = long, y = lat, r = 15), 
+                    cols = fams, color = "black", size = 0.1, legend_name = "Family")+
+  scale_fill_manual(values = fam_cols)
+
+fam_map <- fam_map + ggnewscale::new_scale_fill()
+
+fam_lin_map <- fam_map + 
+  geom_scatterpie(data = region_family_tab, aes(x = long, y = lat, r = 10),
+                   cols = lins, size = 0.1, legend_name = "Lineage")+
+  scale_fill_manual(values = lin_cols)+
+  theme_void()
+  
+fam_lin_map
 
 ```
 
@@ -1356,6 +1417,7 @@ JEP and TGC conceived and directed the project. GN performed bioinformatic and s
 <!-- knitr::include_graphics(region_family_plot_file) -->
 
 <!-- ``` -->
+
 
 ```{r fam-lin-bar-show, echo = F, warning=F, fig.cap = "Spoligotype families and presence (a) in number of lineages and sub-lineages; (b) across WHO regions"}
 
