@@ -287,7 +287,7 @@ l5_6_8_9_La_family_cols <- family_cols[names(family_cols) %in% unique(l5_6_8_9_L
 
 # Plot ----
 
-do_tree <- "4"
+do_tree <- "5_etc"
 
 # Set up ggtree parameters 
 width <- 0.05 # Heatmap width
@@ -325,6 +325,11 @@ if(do_tree == "2"){
                         colnames = F)+
     scale_fill_manual(values = l2_family_cols, breaks = names(l2_family_cols) )+
     labs(fill = "Family")
+  
+  # Save main figure
+  ggsave(file = paste0(results_path, "lin2_ggtree.png"), 
+         plot = l2_ggtree, 
+         width = png_width, height = png_width, units = "mm")
 
   l2_ggtree <- l2_ggtree + ggnewscale::new_scale_fill()
   
@@ -339,7 +344,8 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineage 2")
   
-  ggsave(file = paste0(results_path, "lin2_ggtree.png"), 
+  # Save S figure
+  ggsave(file = paste0(results_path, "S_lin2_ggtree.png"), 
          plot = l2_ggtree, 
          width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin2_ggtree.svg"), plot = l2_ggtree)
@@ -369,6 +375,10 @@ if(do_tree == "2"){
     scale_fill_manual(values = l3_family_cols, breaks = names(l3_family_cols) )+
     labs(fill = "Family")
   
+  # Save main figure
+  ggsave(file = paste0(results_path, "lin3_ggtree.png"), 
+         plot = l3_ggtree, width = png_width, height = png_width, units = "mm")
+  
   l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
   
   # Spoligotype
@@ -382,7 +392,8 @@ if(do_tree == "2"){
     labs(fill = "Spoligotype")+
     ggtitle("Lineage 3")
   
-  ggsave(file = paste0(results_path, "lin3_ggtree.png"), 
+  # Save S figure
+  ggsave(file = paste0(results_path, "S_lin3_ggtree.png"), 
          plot = l3_ggtree, width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin3_ggtree.svg"), plot = l3_ggtree)
 
@@ -405,6 +416,10 @@ if(do_tree == "2"){
     scale_fill_manual(values = l4_family_cols, breaks = names(l4_family_cols) )+
     labs(fill = "Family")
   
+  # Save main figure
+  ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree, 
+         width = png_width, height = png_width, units = "mm")
+  
   l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
 
   # Spoligotype
@@ -417,7 +432,9 @@ if(do_tree == "2"){
     theme(legend.text = element_text(size=10), 
           legend.key.size = unit(0.5, 'cm'))
 
-  ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree, width = png_width, height = png_width, units = "mm")
+  # Save S figure
+  ggsave(file = paste0(results_path, "S_lin4_ggtree.png"), plot = l4_ggtree, 
+         width = png_width, height = png_width, units = "mm")
   # ggsave(file = paste0(results_path, "lin4_ggtree.svg"), plot = l4_ggtree)
 
 }else if(do_tree == "1_7"){
@@ -427,16 +444,16 @@ if(do_tree == "2"){
   l1_7_ggtree <- ggtree(l1_7_tree, size = line_sz, layout = "circular")
   
   # Lineage
-  l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
-                          color = NA,
-                          width = width,
-                          offset = 0,
-                          colnames = F)+
-    scale_fill_manual(values = lin_colours_lv_1[c("1", "7")], 
-                      breaks = names(lin_colours_lv_1[c("1", "7")]), 
-                      name = "Lineage")
-  
-  l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
+  # l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv1_data_ggplot,
+  #                         color = NA,
+  #                         width = width,
+  #                         offset = 0,
+  #                         colnames = F)+
+  #   scale_fill_manual(values = lin_colours_lv_1[c("1", "7")], 
+  #                     breaks = names(lin_colours_lv_1[c("1", "7")]), 
+  #                     name = "Lineage")
+  # 
+  # l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
   
   # Sublineage
   l1_7_ggtree <- gheatmap(l1_7_ggtree, lin_lv2_data_ggplot,
@@ -462,6 +479,10 @@ if(do_tree == "2"){
   
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
   
+  # Save main figure
+  ggsave(file = paste0(results_path, "lin1_7_ggtree.png"), plot = l1_7_ggtree, 
+         width = png_width, height = png_width, units = "mm")
+  
   # Spoligotype
   l1_7_ggtree <- gheatmap(l1_7_ggtree, spol_data_ggplot,
                           offset = spol_os*3.5,
@@ -475,7 +496,9 @@ if(do_tree == "2"){
     theme(legend.text = element_text(size=10), 
           legend.key.size = unit(0.5, 'cm'))
   
-  ggsave(file = paste0(results_path, "lin1_7_ggtree.png"), plot = l1_7_ggtree, width = png_width, height = png_width, units = "mm")
+  # Save S figure
+  ggsave(file = paste0(results_path, "S_lin1_7_ggtree.png"), plot = l1_7_ggtree, 
+         width = png_width, height = png_width, units = "mm")
   
   # ggsave(plot = l1_7_ggtree, filename = paste0(results_path, "lin1_7_ggtree.svg"))
 
@@ -520,7 +543,9 @@ if(do_tree == "2"){
     theme(legend.text = element_text(size=10), 
           legend.key.size = unit(0.5, 'cm'))
   
-  ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "lin5_6_8_9_La_ggtree.png"), width = png_width, height = png_width, units = "mm")
+  # Save S figure
+  ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "S_lin5_6_8_9_La_ggtree.png"),
+         width = png_width, height = png_width, units = "mm")
   # ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "l5_6_8_9_La_ggtree.svg"))
   
 }else if(do_tree == "all"){
