@@ -463,12 +463,6 @@ ggsave(plot = region_family_plot,
 
 ```{r s-2, echo = F, warning=F, message=F}
 
-
-
-
-
-
-
 # Supplementary table 2
 # "Table of spoligotypes (within families), N samples, N sublineages; main sub-lineages % (<5% other); WHO region %; F statistic of heterogeneity….?? [AT LOWEST LEVEL]"
 
@@ -1034,7 +1028,7 @@ ggsave(plot = level_prob_hist, file = level_prob_hist_file,
 
 ```
 
-```{r spol_freq-hist, echo = F, warning=F, message=F}
+```{r spol-freq-hist, echo = F, warning=F, message=F}
 
 spol_freqs <- as.data.frame.matrix(table(spol_lin_levels_table$spoligotype,
                            spol_lin_levels_table$level)) %>% gather()
@@ -1050,6 +1044,34 @@ ggsave(plot = spol_freq_hist, file = spol_freq_hist_file,
        width = 1100/6, height = 700/6, units = "mm")
 
 ```
+
+```{r fam-lin-bar, echo = F, warning=F, message=F}
+
+
+head(lv4)
+
+lv4 <- merge(lv4, select(family_lookup, family, family_group), 
+             by = "family", all.x = T, sort = F)
+
+fam_lin_cnt <- reshape2::dcast(lv4, family_group ~ 'n_lins', 
+                                  value.var = 'lineage', fun.aggregate = len_uniq)
+
+y_ticks <- c(0, seq(5, max(fam_lin_cnt$n_lins), 5))
+
+fam_n_lins_bar <- ggplot(data = fam_lin_cnt, aes(x = family_group, y = n_lins))+
+  geom_bar(stat = "identity", width=0.7, fill="steelblue")+
+  xlab("Family")+
+  ylab("N lineages")+
+  scale_y_continuous(breaks = y_ticks)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+fam_n_lins_bar_file <- "../results/fam_n_lins_bar.png"
+ggsave(plot = fam_n_lins_bar, file = fam_n_lins_bar_file, 
+       width = 1100/6, height = 700/6, units = "mm")
+
+```
+
 
 ```{r working, echo = F, warning=F, message=F}
 
@@ -1281,35 +1303,39 @@ JEP and TGC conceived and directed the project. GN performed bioinformatic and s
 
 ## FIGURES
 
-```{r times, echo = F, warning=F, fig.cap = "Time taken from different input sources using a maximum of 8Gb RAM and 8 threads."}
+<!-- ```{r times, echo = F, warning=F, fig.cap = "Time taken from different input sources using a maximum of 8Gb RAM and 8 threads."} -->
 
-knitr::include_graphics("../results/times.png")
+<!-- knitr::include_graphics("../results/times.png") -->
 
-```
+<!-- ``` -->
 
-```{r level-prob-hist-display, echo = F, warning=F, message=F, fig.cap = "Histograms of correlation score for each lineage level 1-4"}
 
-knitr::include_graphics(level_prob_hist_file)
+<!-- ```{r level-prob-hist-display, echo = F, warning=F, message=F, fig.cap = "Histograms of correlation score for each lineage level 1-4"} -->
 
-```
+<!-- knitr::include_graphics(level_prob_hist_file) -->
 
-```{r spol-freq-hist-display, echo = F, warning=F, message=F, fig.cap = "Histograms of frequencies of spoligotypes for each lineage level 1-4"}
+<!-- ``` -->
 
-knitr::include_graphics(spol_freq_hist_file)
+<!-- ```{r spol-freq-hist-display, echo = F, warning=F, message=F, fig.cap = "Histograms of frequencies of spoligotypes for each lineage level 1-4"} -->
 
-```
+<!-- knitr::include_graphics(spol_freq_hist_file) -->
 
-```{r spol-lin-results-plot-display, echo = F, warning=F, message=F, fig.cap = "Boxplot: Aggregated percentages of samples with each spoligotype, within each lineage; Line: Total percentage of spoligotypes scoring 1 on our correlation score"}
-  
-knitr::include_graphics(spol_lin_results_plot_file)
+<!-- ``` -->
 
-```
 
-```{r region-family-plot, echo = F, warning=F, fig.cap="Heatmap of samples by spoligotype family and region of sample collection, normalised by Region (row)."}
+<!-- ```{r spol-lin-results-plot-display, echo = F, warning=F, message=F, fig.cap = "Boxplot: Aggregated percentages of samples with each spoligotype, within each lineage; Line: Total percentage of spoligotypes scoring 1 on our correlation score"} -->
 
-knitr::include_graphics(region_family_plot_file)
+<!-- knitr::include_graphics(spol_lin_results_plot_file) -->
 
-```
+<!-- ``` -->
+
+
+<!-- ```{r region-family-plot, echo = F, warning=F, fig.cap="Heatmap of samples by spoligotype family and region of sample collection, normalised by Region (row)."} -->
+
+<!-- knitr::include_graphics(region_family_plot_file) -->
+
+<!-- ``` -->
+
 
 ```{r lin-1-7-tree, echo = F, warning=F, fig.cap = "Phylogenetic trees showing lineage or sublineage, family and spoligotypes."}
 
