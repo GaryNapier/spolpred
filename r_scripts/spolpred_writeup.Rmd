@@ -427,7 +427,7 @@ region_family_tab <- rbind(region_family_tab, unknown_row)
 
 # Rename
 region_family_tab <- dplyr::rename(region_family_tab, 
-                                   E.Mediterranean = Eastern.Mediterranean, 
+                                   E.Med. = Eastern.Mediterranean, 
                                    S.E.Asia = South.East.Asia, 
                                    W.Pacific = Western.Pacific)
 
@@ -1047,9 +1047,6 @@ ggsave(plot = spol_freq_hist, file = spol_freq_hist_file,
 
 ```{r fam-lin-bar, echo = F, warning=F, message=F}
 
-
-head(lv4)
-
 lv4 <- merge(lv4, select(family_lookup, family, family_group), 
              by = "family", all.x = T, sort = F)
 
@@ -1072,6 +1069,30 @@ ggsave(plot = fam_n_lins_bar, file = fam_n_lins_bar_file,
 
 ```
 
+```{r fam-who-bar, echo = F, warning=F, message=F}
+
+# Spols with at least 5 samples 
+fam_who <- subset(lin_fam_geo_df, lin_fam_geo_df$spoligotype %in% lv4$spoligotype)
+# Remove unknown WHO
+fam_who <- subset(fam_who, !(WHO_region == "Unknown"))
+
+fam_who <- reshape2::dcast(fam_who, family_group ~ 'n_who', value.var = "WHO_region", fun.aggregate = len_uniq)
+
+y_ticks <- 0:6
+
+fam_who_bar <- ggplot(data = fam_who, aes(x = family_group, y = n_who))+
+  geom_bar(stat = "identity", width=0.7, fill="steelblue")+
+  xlab("Family")+
+  ylab("N WHO regions")+
+  scale_y_continuous(breaks = y_ticks)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+fam_who_bar_file <- "../results/fam_who_bar.png"
+ggsave(plot = fam_who_bar, file = fam_who_bar_file, 
+       width = 1100/6, height = 700/6, units = "mm")
+
+```
 
 ```{r working, echo = F, warning=F, message=F}
 
@@ -1336,8 +1357,21 @@ JEP and TGC conceived and directed the project. GN performed bioinformatic and s
 
 <!-- ``` -->
 
+```{r fam-lin-bar-show, echo = F, warning=F, fig.cap = "Spoligotype families and presence (a) in number of lineages and sub-lineages; (b) across WHO regions"}
 
-```{r lin-1-7-tree, echo = F, warning=F, fig.cap = "Phylogenetic trees showing lineage or sublineage, family and spoligotypes."}
+knitr::include_graphics(fam_n_lins_bar_file)
+
+```
+(a)
+
+```{r fam-who-bar-show, echo = F, warning=F}
+
+knitr::include_graphics(fam_who_bar_file)
+
+```
+(b)
+
+```{r lin-1-7-tree, echo = F, warning=F, fig.cap = "Phylogenetic trees showing lineage or sub-lineage, family and spoligotypes"}
 
 knitr::include_graphics(lin1_7_ggtree)
 
