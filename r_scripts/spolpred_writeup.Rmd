@@ -404,46 +404,6 @@ geo_df <- select(metadata, wgs_id, country_code, country, region, subregion, WHO
 lin_fam_geo_df <- merge(lin_fam_merged, geo_df, 
                         by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
 
-
-
-
-
-
-
-
-
-# Supplementary table 2
-# Table of spoligotypes (within families), N samples, N sublineages; main sub-lineages % (<5% other); WHO region %; F statistic of heterogeneity….??
-
-# Kepp only spols with at least 5 samps
-# lin_fam_geo_df_filt <- lin_fam_geo_df %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
-
-spol_fam_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + family ~ 'n', 
-                 value.var = 'sample', fun.aggregate = len_uniq)
-
-spol_n_sublin <- reshape2::dcast(lin_fam_geo_df, spoligotype ~ 'n_sublin', 
-                 value.var = 'lineage', fun.aggregate = len_uniq)
-
-
-# spol_lin <- select(lin_fam_geo_df, spoligotype, lineage)
-
-spol_lin_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + lineage ~ 'n', 
-                 value.var = 'sample', fun.aggregate = len_uniq)
-
-
-spol_lin_n_split <- split(spol_lin_n, spol_lin_n$spoligotype)
-
-x <- head(spol_lin_n_split[unlist(lapply(spol_lin_n_split, function(x){nrow(x) > 1}))], 10)
-
-
-x
-
-
-
-
-
-
-
 # Make table of region and spol family
 # region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
 region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$family, lin_fam_geo_df$WHO_region))
@@ -456,7 +416,7 @@ n_samps_geo <- data.frame(as.list(sort(colSums(region_family_tab), decreasing = 
 region_family_tab <- region_family_tab[rowSums(region_family_tab) >= 10, ]
 
 # Wrangle for plot
-# Normalise across col (Have to transpose for some reason. Stupid!)
+# Normalise across col
 region_family_tab <- cbind(Family = row.names(region_family_tab), 
       data.frame(apply(num_cols(region_family_tab), 2, function(x) {round(x/sum(x), 3)})))
 
@@ -500,6 +460,103 @@ ggsave(plot = region_family_plot,
        width = 1500/7, height = 1000/5, units = "mm")
 
 ```
+
+```{r s-2, echo = F, warning=F, message=F}
+
+
+
+
+
+
+
+# Supplementary table 2
+# "Table of spoligotypes (within families), N samples, N sublineages; main sub-lineages % (<5% other); WHO region %; F statistic of heterogeneity….?? [AT LOWEST LEVEL]"
+
+# Spol Family	N samples	N sublineages	Main sublineages (%)	Africa	Europe	Americas	Corr.
+# 0..1 X	    1000	2 (1.1,1.2)	1.1 (70), 2.1 (35), 3.1.1 (10)	10% of samples within Africa are this			
+
+
+# Keep only spols with at least 5 samps
+# lin_fam_geo_df_filt <- lin_fam_geo_df %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
+
+lv4 <- subset(spol_lin_levels_table, level == "4")
+
+# Family (from SIT) and number of samples
+spol_fam_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + family ~ 'n', 
+                 value.var = 'sample', fun.aggregate = len_uniq)
+# Subset to ones with at least 5 samps
+spol_fam_n <- subset(spol_fam_n, n >= 5)
+
+# Number of sublins spol is in
+spol_n_sublin <- reshape2::dcast(lv4, spoligotype ~ 'n_sublin', 
+                                 value.var = 'lineage', fun.aggregate = len_uniq)
+
+# 'Main' (>5%) sublins
+lv4_split <-  split(lv4, lv4$spoligotype)
+main_sublins <- lapply(lv4_split, function(x){
+  x <- x[order(-x$freq), ]
+  pcs <- x$freq/sum(x$freq)
+  which_pcs_gr_5 <- which(pcs >= 0.05)
+  pcs_gr_5 <- round(pcs[which_pcs_gr_5]*100, 1)
+  lins_gr_5 <- x[which_pcs_gr_5, "lineage"]
+  lins_pcs <- paste0(lins_gr_5, " (", pcs_gr_5, ")", collapse = "; ")
+  data.frame(spoligotype = unique(x$spoligotype), 
+                   main_sublins = lins_pcs)
+})
+main_sublins <- do.call("rbind", main_sublins)
+
+# WHO regions
+who_tab <- as.data.frame.matrix(table(lin_fam_geo_df$spoligotype, lin_fam_geo_df$WHO_region))
+# Subset to ones with at least 5 samps
+who_tab <- who_tab[row.names(who_tab) %in% spol_fam_n$spoligotype, ]
+# Get percent per col (region)
+who_tab <- apply(who_tab, 2, function(x){
+  round((x/sum(x))*100, 2)
+  })
+# Add spol as col
+who_tab <- data.frame(cbind(spoligotype = row.names(who_tab), who_tab))
+# Drop unknown
+who_tab <- select(who_tab, -Unknown)
+# Clean
+names(who_tab) <- c("spoligotype", "Africa", "Americas", "E.Med.", "Europe", "S.E.Asia", "W.Pacific")
+
+# Correlation metric
+
+corr_df <- lapply(lv4_split, function(x){
+  max_samps_row <- which.max(x$freq)
+  x[max_samps_row, c("spoligotype", "prob")]
+})
+corr_df <- do.call("rbind", corr_df)
+
+
+# PUT TOGETHER
+
+cols_1_to_4 <- merge(spol_fam_n, spol_n_sublin, 
+                     by = "spoligotype", all.x = T, sort = F)
+
+cols_1_to_5 <- merge(cols_1_to_4, main_sublins, 
+                     by = "spoligotype", all.x = T, sort = F)
+
+cols_1_to_who <- merge(cols_1_to_5, who_tab, 
+                       by = "spoligotype", all.x = T, sort = F)
+
+s2 <- merge(cols_1_to_who, corr_df, 
+                       by = "spoligotype", all.x = T, sort = F)
+
+# Clean
+s2 <- s2 %>% arrange(spoligotype)
+s2$spoligotype <- paste0("s", s2$spoligotype)
+s2 <- dplyr::rename(s2, Spoligotype = spoligotype, 
+             Family = family, 
+             "N samples" = n, 
+             "N sublineages" = n_sublin,
+             "Main sublineages (%)" = main_sublins,
+             "Correlation metric" = prob)
+
+write.csv(s2, file = "../results/s2_table.csv", quote = F, row.names = F)
+
+```
+
 
 ```{r clean-spol-data-ctnd, echo = F, warning=F, message=F}
 
