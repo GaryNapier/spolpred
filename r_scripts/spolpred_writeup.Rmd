@@ -398,61 +398,6 @@ spol_data$WHO_region <- ifelse(is.na(spol_data$WHO_region), "Unknown", spol_data
 
 ```
 
-```{r main-lin-family-group, echo = F, warning=F, message=F}
-
-# # What is the correspondence between main lin and the (main) spol families?
-# 
-# # Clean
-# family_lookup <- subset(family_lookup, !(family == "Zero-copy"))
-# 
-# # Merge lineage into family lookup table and pull unique main lineage and family group 
-# lin_fam <- select(spol_data, spoligotype, sample, lineage, family)
-# lin_fam_merged <- merge(lin_fam, family_lookup, by = "family", all.x = T, sort = F)
-# lin_fam_merged$main_lin <- substr(lin_fam_merged$lineage, 1, 1)
-# lin_fam_merged$main_lin <- ifelse(grepl("La", lin_fam_merged$lineage), "La", lin_fam_merged$main_lin)
-# 
-# manu <- subset(lin_fam_merged, family_group == "Manu")
-# manu_spol <- merge(manu, select(spol_data, sample, spoligotype), by = "sample")
-# write.csv(manu_spol, "../results/manu_spol.csv", row.names = F, quote = F)
-# 
-# # Find the anomalous main lin-family groups - ones with just a few samples
-# # e.g. some L1 samps are AFRI, which is clearly not correct
-# lin_fam_freq_tab <- as.data.frame.matrix(table(lin_fam_merged$family_group, lin_fam_merged$main_lin))
-# 
-# # Get numbers for spol families
-# n_samps_family <- data.frame(as.list(sort(rowSums(lin_fam_freq_tab), decreasing = T)))
-# 
-# # Clean and add totals for display
-# lin_fam_freq_tab <- cbind(Family = row.names(lin_fam_freq_tab), lin_fam_freq_tab)
-# lin_fam_freq_tab <- adorn_totals(lin_fam_freq_tab, where = c("row", "col"))
-# 
-# # Make a table of the 'proper' correspondence between main lin and family group, 
-# # taking out the anomalous ones from the freq table
-# main_lin_family_group <- unique(select(lin_fam_merged, main_lin, family_group))
-# main_lin_family_group <- subset(main_lin_family_group, !is.na(family_group))
-# main_lin_family_group <- subset(main_lin_family_group, !(family_group == "Unknown"))
-# main_lin_family_group <- odr(main_lin_family_group)
-# 
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "AFRI"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "AFRI"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "Beijing"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "Beijing"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "Beijing"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "BOV"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "CAS"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "2" & family_group == "CAS"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "CAS"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "CAS"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "EAI"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "PINI2"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "PINI2"))
-# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "T"))
-# 
-# main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
-# 
-# names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
-
-```
 
 ```{r lowest-lvl-spol-split, echo = F, warning=F, message=F}
 
@@ -667,17 +612,22 @@ lv4 <- subset(spol_lin_levels_table, level == "4")
 # Family (from SIT) and number of samples
 # spol_fam_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + family ~ 'n', 
 #                  value.var = 'sample', fun.aggregate = len_uniq)
-spol_fam_n <- reshape2::dcast(spol_data, spoligotype + family ~ 'n', 
+# spol_fam_n <- reshape2::dcast(spol_data, spoligotype + family ~ 'n', 
+#                  value.var = 'sample', fun.aggregate = len_uniq)
+fam_n <- reshape2::dcast(spol_data, family_group + family ~ 'n', 
                  value.var = 'sample', fun.aggregate = len_uniq)
 # Subset to ones with at least 5 samps
 # spol_fam_n <- subset(spol_fam_n, n >= 5)
 
 # Number of sublins spol is in
-spol_n_sublin <- reshape2::dcast(lv4, spoligotype ~ 'n_sublin', 
+# spol_n_sublin <- reshape2::dcast(lv4, spoligotype ~ 'n_sublin', 
+#                                  value.var = 'lineage', fun.aggregate = len_uniq)
+fam_n_sublin <- reshape2::dcast(lv4, family ~ 'n_sublin', 
                                  value.var = 'lineage', fun.aggregate = len_uniq)
 
 # 'Main' (>5%) sublins
-lv4_split <-  split(lv4, lv4$spoligotype)
+# lv4_split <-  split(lv4, lv4$spoligotype)
+lv4_split <-  split(lv4, lv4$family)
 main_sublins <- lapply(lv4_split, function(x){
   x <- x[order(-x$freq), ]
   pcs <- x$freq/sum(x$freq)
@@ -685,14 +635,17 @@ main_sublins <- lapply(lv4_split, function(x){
   pcs_gr_5 <- round(pcs[which_pcs_gr_5]*100, 1)
   lins_gr_5 <- x[which_pcs_gr_5, "lineage"]
   lins_pcs <- paste0(lins_gr_5, " (", pcs_gr_5, ")", collapse = "; ")
-  data.frame(spoligotype = unique(x$spoligotype), 
+  # data.frame(spoligotype = unique(x$spoligotype), 
+  #                  main_sublins = lins_pcs)
+  data.frame(family = unique(x$family), 
                    main_sublins = lins_pcs)
 })
 main_sublins <- do.call("rbind", main_sublins)
 
 # WHO regions
 # who_tab <- as.data.frame.matrix(table(lin_fam_geo_df$spoligotype, lin_fam_geo_df$WHO_region))
-who_tab <- as.data.frame.matrix(table(spol_data$spoligotype, spol_data$WHO_region))
+# who_tab <- as.data.frame.matrix(table(spol_data$spoligotype, spol_data$WHO_region))
+who_tab <- as.data.frame.matrix(table(spol_data$family, spol_data$WHO_region))
 # Subset to ones with at least 5 samps
 # who_tab <- who_tab[row.names(who_tab) %in% spol_fam_n$spoligotype, ]
 # Get percent per col (region)
@@ -700,11 +653,12 @@ who_tab <- apply(who_tab, 2, function(x){
   round((x/sum(x))*100, 2)
   })
 # Add spol as col
-who_tab <- data.frame(cbind(spoligotype = row.names(who_tab), who_tab))
+# who_tab <- data.frame(cbind(spoligotype = row.names(who_tab), who_tab))
+who_tab <- data.frame(cbind(family = row.names(who_tab), who_tab))
 # Drop unknown
 who_tab <- select(who_tab, -Unknown)
 # Clean
-names(who_tab) <- c("spoligotype", "Africa", "Americas", "E.Med.", "Europe", "S.E.Asia", "W.Pacific")
+names(who_tab) <- c("family", "Africa", "Americas", "E.Med.", "Europe", "S.E.Asia", "W.Pacific")
 
 # Correlation metric
 
@@ -717,27 +671,34 @@ names(who_tab) <- c("spoligotype", "Africa", "Americas", "E.Med.", "Europe", "S.
 
 # PUT TOGETHER
 
-cols_1_to_4 <- merge(spol_fam_n, spol_n_sublin, 
-                     by = "spoligotype", all.x = T, sort = F)
+cols_1_to_4 <- merge(fam_n, fam_n_sublin, 
+                     by = "family", all.x = T, sort = F)
 
 cols_1_to_5 <- merge(cols_1_to_4, main_sublins, 
-                     by = "spoligotype", all.x = T, sort = F)
+                     by = "family", all.x = T, sort = F)
 
 s2 <- merge(cols_1_to_5, who_tab, 
-                       by = "spoligotype", all.x = T, sort = F)
+                       by = "family", all.x = T, sort = F)
 
 # s2 <- merge(cols_1_to_who, corr_df, 
 #                        by = "spoligotype", all.x = T, sort = F)
 
 # Clean
-s2 <- s2 %>% arrange(spoligotype)
-s2$spoligotype <- paste0("s", s2$spoligotype)
-s2 <- dplyr::rename(s2, Spoligotype = spoligotype, 
+s2 <- select(s2, family_group, everything())
+# s2 <- s2 %>% arrange(spoligotype)
+# s2 <- s2 %>% arrange(family)
+# s2$spoligotype <- paste0("s", s2$spoligotype)
+# s2 <- dplyr::rename(s2, Spoligotype = spoligotype, 
+#              Family = family, 
+#              "N samples" = n, 
+#              "N sublineages" = n_sublin,
+#              "Main sublineages (%)" = main_sublins,
+#              "Correlation metric" = prob)
+s2 <- dplyr::rename(s2, "Family group" = family_group, 
              Family = family, 
              "N samples" = n, 
              "N sublineages" = n_sublin,
              "Main sublineages (%)" = main_sublins)
-             # "Correlation metric" = prob)
 
 write.csv(s2, file = "../results/s2_table.csv", quote = F, row.names = F)
 
@@ -921,8 +882,65 @@ lv1_lv2_n_spol_fam <- rm_dup_group(lv1_lv2_n_spol_fam, "lineage")
 names(lv1_lv2_n_spol_fam) <- c("Lineage", 
                                "Sub-lineage", 
                                "N (%)", 
-                               "No. spoligotypes", 
-                               "No. families")
+                               "No. spoligotypes (%)*", 
+                               "No. families (%)")
+
+```
+
+```{r main-lin-family-group, echo = F, warning=F, message=F}
+
+# What is the correspondence between main lin and the (main) spol families?
+
+# Clean
+# family_lookup <- subset(family_lookup, !(family == "Zero-copy"))
+
+# # Merge lineage into family lookup table and pull unique main lineage and family group
+# lin_fam <- select(spol_data, spoligotype, sample, lineage, family)
+# lin_fam_merged <- merge(lin_fam, family_lookup, by = "family", all.x = T, sort = F)
+# lin_fam_merged$main_lin <- substr(lin_fam_merged$lineage, 1, 1)
+# lin_fam_merged$main_lin <- ifelse(grepl("La", lin_fam_merged$lineage), "La", lin_fam_merged$main_lin)
+# 
+# manu <- subset(lin_fam_merged, family_group == "Manu")
+# manu_spol <- merge(manu, select(spol_data, sample, spoligotype), by = "sample")
+# write.csv(manu_spol, "../results/manu_spol.csv", row.names = F, quote = F)
+
+# Find the anomalous main lin-family groups - ones with just a few samples
+# e.g. some L1 samps are AFRI, which is clearly not correct
+# lin_fam_freq_tab <- as.data.frame.matrix(table(lin_fam_merged$family_group, lin_fam_merged$main_lin))
+lin_fam_freq_tab <- as.data.frame.matrix(table(spol_data$family_group, spol_data$lin_level_1))
+
+# Get numbers for spol families
+n_samps_family <- data.frame(as.list(sort(rowSums(lin_fam_freq_tab), decreasing = T)))
+
+# Clean and add totals for display
+lin_fam_freq_tab <- cbind(Family = row.names(lin_fam_freq_tab), lin_fam_freq_tab)
+lin_fam_freq_tab <- adorn_totals(lin_fam_freq_tab, where = c("row", "col"))
+
+# # Make a table of the 'proper' correspondence between main lin and family group, 
+# # taking out the anomalous ones from the freq table
+# main_lin_family_group <- unique(select(lin_fam_merged, main_lin, family_group))
+# main_lin_family_group <- subset(main_lin_family_group, !is.na(family_group))
+# main_lin_family_group <- subset(main_lin_family_group, !(family_group == "Unknown"))
+# main_lin_family_group <- odr(main_lin_family_group)
+# 
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "AFRI"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "AFRI"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "Beijing"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "Beijing"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "Beijing"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "BOV"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "2" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "EAI"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "PINI2"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "PINI2"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "T"))
+# 
+# main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
+# 
+# names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
 
 ```
 
@@ -1010,6 +1028,7 @@ for(level in names(spol_lin_levels_table_split)){
 
 ```
 
+<!-- FIGURES -->
 ```{r level-prob-hist, echo = F, warning=F, message=F}
 
 # spol_lin_levels_table$main_lin <- substr(spol_lin_levels_table$lineage, 1, 1)
@@ -1547,22 +1566,24 @@ knitr::include_graphics(fam_lin_map_file)
 
 ## TABLES
 
-```{r times-table, echo = F, warning=F}
+<!-- ```{r times-table, echo = F, warning=F} -->
 
-times_df <- data.frame(Accession = c("ERR1144974", "SRR6389896", "ERR038260", "ERR2513429"), 
-           Median_coverage = c(705, 508, 244, 100), 
-           fastq = c(40.904, 55.541, 16.628, 10.553), 
-           fasta = c(6.589, 6.736, 6.405, 6.429), 
-           bam = c(3.152, 3.323, 2.659, 2.587))
+<!-- times_df <- data.frame(Accession = c("ERR1144974", "SRR6389896", "ERR038260", "ERR2513429"),  -->
+<!--            Median_coverage = c(705, 508, 244, 100),  -->
+<!--            fastq = c(40.904, 55.541, 16.628, 10.553),  -->
+<!--            fasta = c(6.589, 6.736, 6.405, 6.429),  -->
+<!--            bam = c(3.152, 3.323, 2.659, 2.587)) -->
 
 
-names(times_df) <- c("Accession", "Median coverage", "fastq (s)", "fasta (s)", "bam (s)")
+<!-- names(times_df) <- c("Accession", "Median coverage", "fastq (s)", "fasta (s)", "bam (s)") -->
 
-cap <- "Time taken from different input sources using a maximum of 8Gb RAM and 8 threads for four randomly chosen samples"
+<!-- cap <- "Time taken from different input sources using a maximum of 8Gb RAM and 8 threads for four randomly chosen samples" -->
 
-knitr::kable(times_df, row.names = F, caption = cap, format = "pipe")
+<!-- knitr::kable(times_df, row.names = F, caption = cap, format = "pipe") -->
 
-```
+<!-- ``` -->
+
+
 
 ```{r table-1-show, echo = F, warning=F}
 
@@ -1575,13 +1596,13 @@ knitr::kable(table_1_display, row.names = F, caption = cap, format = "pipe")
 
 ```{r lv1-lv2-n-spol-fam-show, echo = F, warning=F}
 
-cap <- sprintf("Numbers of samples and unique spoligotypes for sub-lineages\* across %s *M. tuberculosis*",
+cap <- sprintf("Numbers of samples and unique spoligotypes for sub-lineages after filtering out spoligotypes occurring in fewer than five samples across %s *M. tuberculosis*",
                n_total_samps_after_filter)
 
 knitr::kable(lv1_lv2_n_spol_fam, row.names = F, caption = cap, format = "pipe")
 
 ```
-\*after filtering out spoligotypes occurring in fewer than five samples; Lineage 461 spols vs. sub 703 spols 
+\*Number of spoligotypes duplicated on some occasions due to presence in multiple lineages/sublineages.
 
 <!-- # ```{r main-lin-fam-group-tab, echo = F, warning=F} -->
 <!-- # -->
