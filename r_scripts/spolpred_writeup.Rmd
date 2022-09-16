@@ -34,6 +34,7 @@ library(ggplot2)
 library(tidyverse)
 library(tidyr)
 library(janitor)
+library(scatterpie)
 
 ```
 
@@ -289,7 +290,20 @@ animal <- read.csv(animal_file)
 
 ```
 
+```{r clean-metadata, echo = F, warning=F, message=F}
+
+# Clean metadata regions
+metadata$subregion <- ifelse(metadata$subregion == "Australia and New Zealand", "Oceana", metadata$subregion)
+metadata$subregion <- ifelse(metadata$subregion == "Northern America", "North America", metadata$subregion)
+metadata$subregion <- ifelse(metadata$subregion == "#N/A", "Unknown", metadata$subregion)
+
+```
+
+
 ```{r clean-spol-data, echo = F, warning=F, message=F}
+
+# Remove spacers 
+spol_data <- dplyr::select(spol_data, -(spacer1:spacer43))
 
 # Blank lineages - all 1.2.2.1 apparently
 spol_data$lineage <- ifelse(spol_data$lineage == "", "lineage1.2.2.1", spol_data$lineage)
@@ -315,254 +329,23 @@ spol_data$lineage <- gsub("lineage", "", spol_data$lineage)
 spol_data$family <- ifelse(spol_data$family == "-", "Unknown", spol_data$family)
 spol_data$family <- ifelse(spol_data$family == "Zero-copy", "Unknown", spol_data$family)
 
-# Clean animal spoligotypes (messed up when saving to csv and editing in excel)
+```
+
+
+```{r animal-and-expand-lins-spol-data, echo = F, warning=F, message=F}
+
+# Clean animal spoligotypes (messed up spol when saving to csv and editing in excel)
 animal <- merge(select(animal, -(spoligotype)), 
                 select(spol_data, sample, spoligotype), 
                 by = "sample", all.x = T, sort = F)
 animal <- select(animal, sample, lineage, spoligotype, everything())
 
-
-```
-
-```{r main-lin-family-group, echo = F, warning=F, message=F}
-
-# What is the correspondence between main lin and the (main) spol families?
-
-# Clean
-family_lookup <- subset(family_lookup, !(family == "Zero-copy"))
-
-# Merge lineage into family lookup table and pull unique main lineage and family group 
-lin_fam <- select(spol_data, spoligotype, sample, lineage, family)
-lin_fam_merged <- merge(lin_fam, family_lookup, by = "family", all.x = T, sort = F)
-lin_fam_merged$main_lin <- substr(lin_fam_merged$lineage, 1, 1)
-lin_fam_merged$main_lin <- ifelse(grepl("La", lin_fam_merged$lineage), "La", lin_fam_merged$main_lin)
-
-manu <- subset(lin_fam_merged, family_group == "Manu")
-manu_spol <- merge(manu, select(spol_data, sample, spoligotype), by = "sample")
-write.csv(manu_spol, "../results/manu_spol.csv", row.names = F, quote = F)
-
-# Find the anomalous main lin-family groups - ones with just a few samples
-# e.g. some L1 samps are AFRI, which is clearly not correct
-lin_fam_freq_tab <- as.data.frame.matrix(table(lin_fam_merged$family_group, lin_fam_merged$main_lin))
-
-# Get numbers for spol families
-n_samps_family <- data.frame(as.list(sort(rowSums(lin_fam_freq_tab), decreasing = T)))
-
-# Clean and add totals for display
-lin_fam_freq_tab <- cbind(Family = row.names(lin_fam_freq_tab), lin_fam_freq_tab)
-lin_fam_freq_tab <- adorn_totals(lin_fam_freq_tab, where = c("row", "col"))
-
-# Make a table of the 'proper' correspondence between main lin and family group, 
-# taking out the anomalous ones from the freq table
-main_lin_family_group <- unique(select(lin_fam_merged, main_lin, family_group))
-main_lin_family_group <- subset(main_lin_family_group, !is.na(family_group))
-main_lin_family_group <- subset(main_lin_family_group, !(family_group == "Unknown"))
-main_lin_family_group <- odr(main_lin_family_group)
-
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "AFRI"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "AFRI"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "Beijing"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "Beijing"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "Beijing"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "BOV"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "CAS"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "2" & family_group == "CAS"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "CAS"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "CAS"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "EAI"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "PINI2"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "PINI2"))
-main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "T"))
-
-main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
-
-names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
-
-
-```
-
-```{r geo, echo = F, warning=F, message=F}
-
-# Clean metadata regions
-metadata$subregion <- ifelse(metadata$subregion == "Australia and New Zealand", "Oceana", metadata$subregion)
-metadata$subregion <- ifelse(metadata$subregion == "Northern America", "North America", metadata$subregion)
-metadata$subregion <- ifelse(metadata$subregion == "#N/A", "Unknown", metadata$subregion)
-
-# Merge in WHO regions
-metadata <- merge(metadata, 
-                  select(regions_lookup, country_code_lower, WHO_region),
-                  by.x = "country_code", 
-                  by.y = "country_code_lower", 
-                  all.x = T,
-                  sort = F)
-
-# Add unknown
-metadata$WHO_region <- ifelse(is.na(metadata$WHO_region), "Unknown", metadata$WHO_region)
-
-# Merge metadata to spol family data
-geo_df <- select(metadata, wgs_id, country_code, country, region, subregion, WHO_region)
-lin_fam_geo_df <- merge(lin_fam_merged, geo_df, 
-                        by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
-
-# Make table of region and spol family
-# region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
-region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$family, lin_fam_geo_df$WHO_region))
-# region_family_tab <- cbind(Region = row.names(region_family_tab), region_family_tab)
-
-# Get geo numbers
-n_samps_geo <- data.frame(as.list(sort(colSums(region_family_tab), decreasing = T) ))
-
-# Take out rows with < 10 
-region_family_tab <- region_family_tab[rowSums(region_family_tab) >= 10, ]
-
-# Wrangle for plot
-# Normalise across col
-region_family_tab <- cbind(Family = row.names(region_family_tab), 
-      data.frame(apply(num_cols(region_family_tab), 2, function(x) {round(x/sum(x), 3)})))
-
-# Clean - re-arrange unknown
-unknown_row <- subset(region_family_tab, Family == "Unknown")
-region_family_tab <- subset(region_family_tab, !(Family == "Unknown"))
-region_family_tab <- rbind(region_family_tab, unknown_row)
-
-# Rename
-region_family_tab <- dplyr::rename(region_family_tab, 
-                                   E.Med. = Eastern.Mediterranean, 
-                                   S.E.Asia = South.East.Asia, 
-                                   W.Pacific = Western.Pacific)
-
-# Make long format for heatmap
-region_family_tab_plot <- region_family_tab %>% gather(Region, value, -Family)
-
-# Plot
-max_n <- round_any(max(region_family_tab_plot$value), 1000)
-leg_ticks <- c(0, 10, 100, 1000, 2000)
-leg_breaks <- replace_inf(log(leg_ticks))
-# region_family_plot <- ggplot(data = region_family_tab_plot, 
-#             aes(x = Family, y = Region, fill = log(value+1))) +
-
-region_family_plot <- ggplot(data = region_family_tab_plot, 
-            aes(x = Region, y = Family, fill = value)) +
-  geom_tile()+
-  geom_text(aes(label = value), color = "white", size = 3)+ 
-  xlab("WHO region")+
-  scale_y_discrete(limits=rev)+
-  theme_bw()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(), 
-        panel.background = element_blank())+
-  coord_fixed(ratio=0.2)
-
-region_family_plot_file <- paste0(results_path, "region_family_plot.png")
-ggsave(plot = region_family_plot, 
-       file = region_family_plot_file, 
-       width = 1500/7, height = 1000/5, units = "mm")
-
-```
-
-```{r s-2, echo = F, warning=F, message=F}
-
-# Supplementary table 2
-# "Table of spoligotypes (within families), N samples, N sublineages; main sub-lineages % (<5% other); WHO region %; F statistic of heterogeneity….?? [AT LOWEST LEVEL]"
-
-# Spol Family	N samples	N sublineages	Main sublineages (%)	Africa	Europe	Americas	Corr.
-# 0..1 X	    1000	2 (1.1,1.2)	1.1 (70), 2.1 (35), 3.1.1 (10)	10% of samples within Africa are this			
-
-
-# Keep only spols with at least 5 samps
-# lin_fam_geo_df_filt <- lin_fam_geo_df %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
-
-lv4 <- subset(spol_lin_levels_table, level == "4")
-
-# Family (from SIT) and number of samples
-spol_fam_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + family ~ 'n', 
-                 value.var = 'sample', fun.aggregate = len_uniq)
-# Subset to ones with at least 5 samps
-spol_fam_n <- subset(spol_fam_n, n >= 5)
-
-# Number of sublins spol is in
-spol_n_sublin <- reshape2::dcast(lv4, spoligotype ~ 'n_sublin', 
-                                 value.var = 'lineage', fun.aggregate = len_uniq)
-
-# 'Main' (>5%) sublins
-lv4_split <-  split(lv4, lv4$spoligotype)
-main_sublins <- lapply(lv4_split, function(x){
-  x <- x[order(-x$freq), ]
-  pcs <- x$freq/sum(x$freq)
-  which_pcs_gr_5 <- which(pcs >= 0.05)
-  pcs_gr_5 <- round(pcs[which_pcs_gr_5]*100, 1)
-  lins_gr_5 <- x[which_pcs_gr_5, "lineage"]
-  lins_pcs <- paste0(lins_gr_5, " (", pcs_gr_5, ")", collapse = "; ")
-  data.frame(spoligotype = unique(x$spoligotype), 
-                   main_sublins = lins_pcs)
-})
-main_sublins <- do.call("rbind", main_sublins)
-
-# WHO regions
-who_tab <- as.data.frame.matrix(table(lin_fam_geo_df$spoligotype, lin_fam_geo_df$WHO_region))
-# Subset to ones with at least 5 samps
-who_tab <- who_tab[row.names(who_tab) %in% spol_fam_n$spoligotype, ]
-# Get percent per col (region)
-who_tab <- apply(who_tab, 2, function(x){
-  round((x/sum(x))*100, 2)
-  })
-# Add spol as col
-who_tab <- data.frame(cbind(spoligotype = row.names(who_tab), who_tab))
-# Drop unknown
-who_tab <- select(who_tab, -Unknown)
-# Clean
-names(who_tab) <- c("spoligotype", "Africa", "Americas", "E.Med.", "Europe", "S.E.Asia", "W.Pacific")
-
-# Correlation metric
-
-corr_df <- lapply(lv4_split, function(x){
-  max_samps_row <- which.max(x$freq)
-  x[max_samps_row, c("spoligotype", "prob")]
-})
-corr_df <- do.call("rbind", corr_df)
-
-
-# PUT TOGETHER
-
-cols_1_to_4 <- merge(spol_fam_n, spol_n_sublin, 
-                     by = "spoligotype", all.x = T, sort = F)
-
-cols_1_to_5 <- merge(cols_1_to_4, main_sublins, 
-                     by = "spoligotype", all.x = T, sort = F)
-
-cols_1_to_who <- merge(cols_1_to_5, who_tab, 
-                       by = "spoligotype", all.x = T, sort = F)
-
-s2 <- merge(cols_1_to_who, corr_df, 
-                       by = "spoligotype", all.x = T, sort = F)
-
-# Clean
-s2 <- s2 %>% arrange(spoligotype)
-s2$spoligotype <- paste0("s", s2$spoligotype)
-s2 <- dplyr::rename(s2, Spoligotype = spoligotype, 
-             Family = family, 
-             "N samples" = n, 
-             "N sublineages" = n_sublin,
-             "Main sublineages (%)" = main_sublins,
-             "Correlation metric" = prob)
-
-write.csv(s2, file = "../results/s2_table.csv", quote = F, row.names = F)
-
-```
-
-
-```{r clean-spol-data-ctnd, echo = F, warning=F, message=F}
-
-# Prepare data fro r-binding with animal. 
+# Prepare data for r-binding with animal. 
 
 # head(animal)
 # sample        lineage spoligotype lin_level_1 lin_level_2 lin_level_3 lin_level_4 lin_level_5
 # ERR3275518     La1      1...0          La         La1         La1         La1         La1
 # ERR2517357     La1      1...0          La         La1         La1         La1         La1
-
-# Remove spacers 
-spol_data <- dplyr::select(spol_data, -(spacer1:spacer43))
 
 # Retain SIT and family data with sample as key
 samp_sit_fam <- select(spol_data, sample, SIT, family)
@@ -589,6 +372,9 @@ spol_data <- merge(spol_data, exp,
 # Add animal back in after processing manually
 spol_data <- rbind(spol_data, animal)
 
+```
+
+```{r add-metadata-to-spol-data, echo = F, warning=F, message=F}
 
 # Merge SIT and family back in
 spol_data <- merge(spol_data, samp_sit_fam, by = "sample", 
@@ -597,6 +383,74 @@ spol_data <- merge(spol_data, samp_sit_fam, by = "sample",
 # Add in family group
 spol_data <- merge(spol_data, select(family_lookup, family, family_group), 
                    by = "family", all.x = T, sort = F)
+
+# Add in country and regions
+spol_data <- merge(spol_data, select(metadata, wgs_id, country_code, region, subregion), 
+                   by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
+
+# Add WHO region
+spol_data <- merge(spol_data, select(regions_lookup, country_code_lower, WHO_region), 
+                   by.x = "country_code", by.y = "country_code_lower", all.x = T, sort = F)
+
+# Clean
+spol_data$WHO_region <- ifelse(is.na(spol_data$WHO_region), "Unknown", spol_data$WHO_region)
+
+
+```
+
+```{r main-lin-family-group, echo = F, warning=F, message=F}
+
+# # What is the correspondence between main lin and the (main) spol families?
+# 
+# # Clean
+# family_lookup <- subset(family_lookup, !(family == "Zero-copy"))
+# 
+# # Merge lineage into family lookup table and pull unique main lineage and family group 
+# lin_fam <- select(spol_data, spoligotype, sample, lineage, family)
+# lin_fam_merged <- merge(lin_fam, family_lookup, by = "family", all.x = T, sort = F)
+# lin_fam_merged$main_lin <- substr(lin_fam_merged$lineage, 1, 1)
+# lin_fam_merged$main_lin <- ifelse(grepl("La", lin_fam_merged$lineage), "La", lin_fam_merged$main_lin)
+# 
+# manu <- subset(lin_fam_merged, family_group == "Manu")
+# manu_spol <- merge(manu, select(spol_data, sample, spoligotype), by = "sample")
+# write.csv(manu_spol, "../results/manu_spol.csv", row.names = F, quote = F)
+# 
+# # Find the anomalous main lin-family groups - ones with just a few samples
+# # e.g. some L1 samps are AFRI, which is clearly not correct
+# lin_fam_freq_tab <- as.data.frame.matrix(table(lin_fam_merged$family_group, lin_fam_merged$main_lin))
+# 
+# # Get numbers for spol families
+# n_samps_family <- data.frame(as.list(sort(rowSums(lin_fam_freq_tab), decreasing = T)))
+# 
+# # Clean and add totals for display
+# lin_fam_freq_tab <- cbind(Family = row.names(lin_fam_freq_tab), lin_fam_freq_tab)
+# lin_fam_freq_tab <- adorn_totals(lin_fam_freq_tab, where = c("row", "col"))
+# 
+# # Make a table of the 'proper' correspondence between main lin and family group, 
+# # taking out the anomalous ones from the freq table
+# main_lin_family_group <- unique(select(lin_fam_merged, main_lin, family_group))
+# main_lin_family_group <- subset(main_lin_family_group, !is.na(family_group))
+# main_lin_family_group <- subset(main_lin_family_group, !(family_group == "Unknown"))
+# main_lin_family_group <- odr(main_lin_family_group)
+# 
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "AFRI"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "AFRI"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "Beijing"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "Beijing"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "Beijing"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "BOV"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "2" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "5" & family_group == "CAS"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "EAI"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "1" & family_group == "PINI2"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "4" & family_group == "PINI2"))
+# main_lin_family_group <- subset(main_lin_family_group, !(main_lin == "3" & family_group == "T"))
+# 
+# main_lin_family_group <- rm_dup_group(main_lin_family_group, "main_lin")
+# 
+# names(main_lin_family_group) <- c("Main lineage", "Spoligotype family group")
 
 ```
 
@@ -658,6 +512,7 @@ for(level in names(spol_lin_levels_split)){
   }
   spol_lin_levels_top[[level]] <- do.call("rbind", lin_list)
 }
+
 ```
 
 ```{r clean-results-table-ctnd, echo = F, warning=F, message=F}
@@ -697,6 +552,7 @@ n_unique_spol_before_filter <- length(unique(spol_data$spoligotype))
 
 ```
 
+<!-- FILTER! FILTER! FILTER! FILTER! FILTER! -->
 ```{r filter-spol-five-samps, echo = F, warning=F}
 
 # Make a copy first
@@ -706,12 +562,184 @@ spol_data_unfilt <- spol_data
 spol_data <- spol_data %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
 
 ```
+<!-- FILTER! FILTER! FILTER! FILTER! FILTER! -->
 
 ```{r basic-numbers-after-filter, echo = F, warning=F, message=F}
 
 n_total_samps_after_filter <- length(spol_data$sample)
 n_unique_lins_after_filter <- length(unique(spol_data$lineage))
 n_unique_spol_after_filter <- length(unique(spol_data$spoligotype))
+
+```
+
+```{r geo, echo = F, warning=F, message=F}
+
+# Merge in WHO regions
+# metadata <- merge(metadata,
+#                   select(regions_lookup, country_code_lower, WHO_region),
+#                   by.x = "country_code",
+#                   by.y = "country_code_lower",
+#                   all.x = T,
+#                   sort = F)
+
+# Add unknown
+# metadata$WHO_region <- ifelse(is.na(metadata$WHO_region), "Unknown", metadata$WHO_region)
+
+# Merge metadata to spol family data
+# geo_df <- select(metadata, wgs_id, country_code, country, region, subregion, WHO_region)
+# lin_fam_geo_df <- merge(lin_fam_merged, geo_df,
+#                         by.x = "sample", by.y = "wgs_id", all.x = T, sort = F)
+
+# Make table of region and spol family
+# region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
+# region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$family, lin_fam_geo_df$WHO_region))
+# region_family_tab <- cbind(Region = row.names(region_family_tab), region_family_tab)
+
+# CORRECT - Using spol_data
+# region_family_tab <- as.data.frame.matrix(table(spol_data$family, spol_data$WHO_region))
+# CORRECT - Using spol_data
+
+# # Get geo numbers
+# n_samps_geo <- data.frame(as.list(sort(colSums(region_family_tab), decreasing = T) ))
+# 
+# # Take out rows with < 10 
+# region_family_tab <- region_family_tab[rowSums(region_family_tab) >= 10, ]
+# 
+# # Wrangle for plot
+# # Normalise across col
+# region_family_tab <- cbind(Family = row.names(region_family_tab), 
+#       data.frame(apply(num_cols(region_family_tab), 2, function(x) {round(x/sum(x), 3)})))
+# 
+# # Clean - re-arrange unknown
+# unknown_row <- subset(region_family_tab, Family == "Unknown")
+# region_family_tab <- subset(region_family_tab, !(Family == "Unknown"))
+# region_family_tab <- rbind(region_family_tab, unknown_row)
+# 
+# # Rename
+# region_family_tab <- dplyr::rename(region_family_tab, 
+#                                    E.Med. = Eastern.Mediterranean, 
+#                                    S.E.Asia = South.East.Asia, 
+#                                    W.Pacific = Western.Pacific)
+
+# # Make long format for heatmap
+# region_family_tab_plot <- region_family_tab %>% gather(Region, value, -Family)
+# 
+# # Plot
+# max_n <- round_any(max(region_family_tab_plot$value), 1000)
+# leg_ticks <- c(0, 10, 100, 1000, 2000)
+# leg_breaks <- replace_inf(log(leg_ticks))
+# # region_family_plot <- ggplot(data = region_family_tab_plot, 
+# #             aes(x = Family, y = Region, fill = log(value+1))) +
+# 
+# region_family_plot <- ggplot(data = region_family_tab_plot, 
+#             aes(x = Region, y = Family, fill = value)) +
+#   geom_tile()+
+#   geom_text(aes(label = value), color = "white", size = 3)+ 
+#   xlab("WHO region")+
+#   scale_y_discrete(limits=rev)+
+#   theme_bw()+
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+#         panel.grid.major = element_blank(), 
+#         panel.grid.minor = element_blank(), 
+#         panel.background = element_blank())+
+#   coord_fixed(ratio=0.2)
+# 
+# region_family_plot_file <- paste0(results_path, "region_family_plot.png")
+# ggsave(plot = region_family_plot, 
+#        file = region_family_plot_file, 
+#        width = 1500/7, height = 1000/5, units = "mm")
+
+```
+
+```{r s-2, echo = F, warning=F, message=F}
+
+# Supplementary table 2
+# "Table of spoligotypes (within families), N samples, N sublineages; main sub-lineages % (<5% other); WHO region %; F statistic of heterogeneity….?? [AT LOWEST LEVEL]"
+
+# Spol Family	N samples	N sublineages	Main sublineages (%)	Africa	Europe	Americas	Corr.
+# 0..1 X	    1000	2 (1.1,1.2)	1.1 (70), 2.1 (35), 3.1.1 (10)	10% of samples within Africa are this			
+
+# Keep only spols with at least 5 samps
+# lin_fam_geo_df_filt <- lin_fam_geo_df %>% group_by(spoligotype) %>% filter(n() > 4) %>% data.frame()
+
+lv4 <- subset(spol_lin_levels_table, level == "4")
+
+# Family (from SIT) and number of samples
+# spol_fam_n <- reshape2::dcast(lin_fam_geo_df, spoligotype + family ~ 'n', 
+#                  value.var = 'sample', fun.aggregate = len_uniq)
+spol_fam_n <- reshape2::dcast(spol_data, spoligotype + family ~ 'n', 
+                 value.var = 'sample', fun.aggregate = len_uniq)
+# Subset to ones with at least 5 samps
+# spol_fam_n <- subset(spol_fam_n, n >= 5)
+
+# Number of sublins spol is in
+spol_n_sublin <- reshape2::dcast(lv4, spoligotype ~ 'n_sublin', 
+                                 value.var = 'lineage', fun.aggregate = len_uniq)
+
+# 'Main' (>5%) sublins
+lv4_split <-  split(lv4, lv4$spoligotype)
+main_sublins <- lapply(lv4_split, function(x){
+  x <- x[order(-x$freq), ]
+  pcs <- x$freq/sum(x$freq)
+  which_pcs_gr_5 <- which(pcs >= 0.05)
+  pcs_gr_5 <- round(pcs[which_pcs_gr_5]*100, 1)
+  lins_gr_5 <- x[which_pcs_gr_5, "lineage"]
+  lins_pcs <- paste0(lins_gr_5, " (", pcs_gr_5, ")", collapse = "; ")
+  data.frame(spoligotype = unique(x$spoligotype), 
+                   main_sublins = lins_pcs)
+})
+main_sublins <- do.call("rbind", main_sublins)
+
+# WHO regions
+# who_tab <- as.data.frame.matrix(table(lin_fam_geo_df$spoligotype, lin_fam_geo_df$WHO_region))
+who_tab <- as.data.frame.matrix(table(spol_data$spoligotype, spol_data$WHO_region))
+# Subset to ones with at least 5 samps
+# who_tab <- who_tab[row.names(who_tab) %in% spol_fam_n$spoligotype, ]
+# Get percent per col (region)
+who_tab <- apply(who_tab, 2, function(x){
+  round((x/sum(x))*100, 2)
+  })
+# Add spol as col
+who_tab <- data.frame(cbind(spoligotype = row.names(who_tab), who_tab))
+# Drop unknown
+who_tab <- select(who_tab, -Unknown)
+# Clean
+names(who_tab) <- c("spoligotype", "Africa", "Americas", "E.Med.", "Europe", "S.E.Asia", "W.Pacific")
+
+# Correlation metric
+
+# corr_df <- lapply(lv4_split, function(x){
+#   max_samps_row <- which.max(x$freq)
+#   x[max_samps_row, c("spoligotype", "prob")]
+# })
+# corr_df <- do.call("rbind", corr_df)
+
+
+# PUT TOGETHER
+
+cols_1_to_4 <- merge(spol_fam_n, spol_n_sublin, 
+                     by = "spoligotype", all.x = T, sort = F)
+
+cols_1_to_5 <- merge(cols_1_to_4, main_sublins, 
+                     by = "spoligotype", all.x = T, sort = F)
+
+s2 <- merge(cols_1_to_5, who_tab, 
+                       by = "spoligotype", all.x = T, sort = F)
+
+# s2 <- merge(cols_1_to_who, corr_df, 
+#                        by = "spoligotype", all.x = T, sort = F)
+
+# Clean
+s2 <- s2 %>% arrange(spoligotype)
+s2$spoligotype <- paste0("s", s2$spoligotype)
+s2 <- dplyr::rename(s2, Spoligotype = spoligotype, 
+             Family = family, 
+             "N samples" = n, 
+             "N sublineages" = n_sublin,
+             "Main sublineages (%)" = main_sublins)
+             # "Correlation metric" = prob)
+
+write.csv(s2, file = "../results/s2_table.csv", quote = F, row.names = F)
 
 ```
 
@@ -756,8 +784,9 @@ lin_lv1_pivot$pc <- round(lin_lv1_pivot$n_samp/(sum(lin_lv1_pivot$n_samp))*100, 
 # Spol family
 
 # How many samples per main spol family
-n_pivot_fam <- reshape2::dcast(lin_fam_merged, family_group ~ 'n_samp', 
+n_pivot_fam <- reshape2::dcast(spol_data_unfilt, family_group ~ 'n_samp', 
                                value.var = "sample", fun.aggregate = len_uniq)
+
 # Aggregate "other"
 n_pivot_fam_other <- subset(n_pivot_fam, n_samp < 297)
 other_df <- data.frame(family_group = "Other", n_samp = sum(n_pivot_fam_other$n_samp))
@@ -766,7 +795,7 @@ n_pivot_fam <- n_pivot_fam %>% arrange(desc(n_samp))
 n_pivot_fam <- rbind(n_pivot_fam, other_df)
 
 # How many spols in each spol fam?
-mem_pivot_fam <- reshape2::dcast(lin_fam_merged, family_group ~ 'n_mem', 
+mem_pivot_fam <- reshape2::dcast(spol_data_unfilt, family_group ~ 'n_mem', 
                                  value.var = "spoligotype", fun.aggregate = len_uniq)
 # Aggregate "other"
 # Make sure same rows as above
@@ -784,15 +813,16 @@ fam_pivot$pc <- round(fam_pivot$n_samp/sum(fam_pivot$n_samp)*100, 1)
 # WHO region
 
 # Subset metadata to those in the spol data
-who <- subset(metadata, metadata$wgs_id %in% spol_data_unfilt$sample)
+# who <- subset(metadata, metadata$wgs_id %in% spol_data_unfilt$sample)
 
 # How many samples per WHO region?
-n_pivot_who <- reshape2::dcast(who, WHO_region ~ 'n_samp', 
-                               value.var = "wgs_id", fun.aggregate = len_uniq)
+n_pivot_who <- reshape2::dcast(spol_data_unfilt, WHO_region ~ 'n_samp', 
+                               value.var = "sample", fun.aggregate = len_uniq)
 
 # How many countries per WHO region?
-mem_pivot_who <- reshape2::dcast(who, WHO_region ~ 'n_mem', 
+mem_pivot_who <- reshape2::dcast(spol_data, WHO_region ~ 'n_mem', 
                                  value.var = "country_code", fun.aggregate = len_uniq)
+
 # Merge clean and add pc col
 who_pivot <- merge(mem_pivot_who, n_pivot_who, by = "WHO_region")
 who_pivot <- who_pivot %>% arrange(desc(n_samp))
@@ -953,64 +983,64 @@ for(level in names(spol_lin_levels_table_split)){
 
 ```{r spol-lin-results-plot, echo = F, warning=F, message=F}
 
-spol_lin_levels_table$col_prob_log10 <- log10(spol_lin_levels_table$col_prob)
-spol_lin_levels_table$col_prob_log10 <- ifelse(is.infinite(spol_lin_levels_table$col_prob_log10), 
-                                               min(spol_lin_levels_table$col_prob_log10[!is.infinite(spol_lin_levels_table$col_prob_log10)]),
-                                               spol_lin_levels_table$col_prob_log10)
-
-pure_pc_df <- list_to_df_group(pure_pc_list)
-pure_pc_df$group <- 1:4
-
-y_A <- seq(0, 2, 0.5)
-y_B <- seq(0, 10, 2) 
-y_C <- seq(20, 50, 10) 
-y_D <- seq(60, 100, 20)
-y_ax <- c(y_A, y_B, y_C, y_D)
-spol_lin_results_plot <- ggplot()+
-  geom_boxplot(data = spol_lin_levels_table, aes(x = as.factor(level), y = col_prob))+
-  geom_line(data = pure_pc_df, aes(x=group, y=values, group=1), color="red", size = 1)+
-  geom_point(data = pure_pc_df, aes(x=group, y=values), size = 3, colour = "blue")+
-  xlab("Lineage level")+
-  ylab("Percentage")+
-  scale_y_log10(breaks = y_ax)+
-  theme_bw()
-spol_lin_results_plot_file <- "../results/spol_lin_results_plot.png"
-
-ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 1100/5, height = 700/5, units = "mm")
+# spol_lin_levels_table$col_prob_log10 <- log10(spol_lin_levels_table$col_prob)
+# spol_lin_levels_table$col_prob_log10 <- ifelse(is.infinite(spol_lin_levels_table$col_prob_log10), 
+#                                                min(spol_lin_levels_table$col_prob_log10[!is.infinite(spol_lin_levels_table$col_prob_log10)]),
+#                                                spol_lin_levels_table$col_prob_log10)
+# 
+# pure_pc_df <- list_to_df_group(pure_pc_list)
+# pure_pc_df$group <- 1:4
+# 
+# y_A <- seq(0, 2, 0.5)
+# y_B <- seq(0, 10, 2) 
+# y_C <- seq(20, 50, 10) 
+# y_D <- seq(60, 100, 20)
+# y_ax <- c(y_A, y_B, y_C, y_D)
+# spol_lin_results_plot <- ggplot()+
+#   geom_boxplot(data = spol_lin_levels_table, aes(x = as.factor(level), y = col_prob))+
+#   geom_line(data = pure_pc_df, aes(x=group, y=values, group=1), color="red", size = 1)+
+#   geom_point(data = pure_pc_df, aes(x=group, y=values), size = 3, colour = "blue")+
+#   xlab("Lineage level")+
+#   ylab("Percentage")+
+#   scale_y_log10(breaks = y_ax)+
+#   theme_bw()
+# spol_lin_results_plot_file <- "../results/spol_lin_results_plot.png"
+# 
+# ggsave(file = spol_lin_results_plot_file, plot = spol_lin_results_plot, width = 1100/5, height = 700/5, units = "mm")
 
 ```
 
 ```{r level-prob-hist, echo = F, warning=F, message=F}
 
-spol_lin_levels_table$main_lin <- substr(spol_lin_levels_table$lineage, 1, 1)
-
-spol_lin_levels_table$main_lin <- ifelse(spol_lin_levels_table$main_lin == "L", "La", 
-                                         spol_lin_levels_table$main_lin)
-
-spol_lin_levels_table <- spol_lin_levels_table %>% 
-  mutate(prob_group = case_when(prob == 1 ~ '1',
-                                prob < 1 & prob >= 0.9 ~ '0.9-0.99',
-                                prob < 0.9 & prob >= 0.8 ~ '0.8-0.89', 
-                                prob < 0.8 & prob >= 0.7 ~ '0.7-0.79', 
-                                prob < 0.7 & prob >= 0.6 ~ '0.6-0.69', 
-                                prob < 0.6 & prob >= 0.5 ~ '0.5-0.59', 
-                                prob < 0.5 & prob >= 0.4 ~ '0.4-0.49', 
-                                prob < 0.4 & prob >= 0.3 ~ '0.3-0.39', 
-                                prob < 0.3 & prob >= 0.2 ~ '0.2-0.29', 
-                                prob < 0.2 & prob >= 0.1 ~ '0.1-0.19', 
-                                prob < 0.1 & prob >= 0 ~ '0-0.09'))
-
-prob_group_pivot <- reshape2::dcast(data = spol_lin_levels_table, prob_group ~ level)
-prob_group_pivot <- prob_group_pivot[rev(1:nrow(prob_group_pivot)), ]
-
-
-level_prob_hist <- ggplot(spol_lin_levels_table, aes(x = prob, fill = main_lin))+
-  geom_histogram(bins = 11, colour = "black", lwd=0.1)+
-  scale_x_continuous(breaks = seq(0, 1, 0.1))+
-  labs(fill = "Lineage")+
-  xlab("Correlation score")+
-  facet_wrap( ~ level)+
-  theme_bw()
+# spol_lin_levels_table$main_lin <- substr(spol_lin_levels_table$lineage, 1, 1)
+# 
+# spol_lin_levels_table$main_lin <- ifelse(spol_lin_levels_table$main_lin == "L", "La", 
+#                                          spol_lin_levels_table$main_lin)
+# 
+# spol_lin_levels_table <- spol_lin_levels_table %>% 
+#   mutate(prob_group = case_when(prob == 1 ~ '1',
+#                                 prob < 1 & prob >= 0.9 ~ '0.9-0.99',
+#                                 prob < 0.9 & prob >= 0.8 ~ '0.8-0.89', 
+#                                 prob < 0.8 & prob >= 0.7 ~ '0.7-0.79', 
+#                                 prob < 0.7 & prob >= 0.6 ~ '0.6-0.69', 
+#                                 prob < 0.6 & prob >= 0.5 ~ '0.5-0.59', 
+#                                 prob < 0.5 & prob >= 0.4 ~ '0.4-0.49', 
+#                                 prob < 0.4 & prob >= 0.3 ~ '0.3-0.39', 
+#                                 prob < 0.3 & prob >= 0.2 ~ '0.2-0.29', 
+#                                 prob < 0.2 & prob >= 0.1 ~ '0.1-0.19', 
+#                                 prob < 0.1 & prob >= 0 ~ '0-0.09'))
+# 
+# prob_group_pivot <- reshape2::dcast(data = spol_lin_levels_table, prob_group ~ level)
+# prob_group_pivot <- prob_group_pivot[rev(1:nrow(prob_group_pivot)), ]
+# 
+# 
+# level_prob_hist <- ggplot(spol_lin_levels_table, aes(x = prob, fill = main_lin))+
+#   geom_histogram(bins = 11, colour = "black", lwd=0.1)+
+#   scale_x_continuous(breaks = seq(0, 1, 0.1))+
+#   labs(fill = "Lineage")+
+#   xlab("Correlation score")+
+#   facet_wrap( ~ level)+
+#   theme_bw()
 
 # level_prob_hist <- ggplot(spol_lin_levels_table, aes(x = prob_group, fill = main_lin))+
 #   geom_histogram(bins = 11, colour = "black", lwd=0.1, stat = "count")+
@@ -1022,100 +1052,135 @@ level_prob_hist <- ggplot(spol_lin_levels_table, aes(x = prob, fill = main_lin))
 #   theme_bw()+
 #   theme(axis.text.x = element_text(angle=45, hjust = 1))
 
-level_prob_hist_file <- "../results/level_prob_hist.png"
-ggsave(plot = level_prob_hist, file = level_prob_hist_file, 
-       width = 1100/6, height = 700/6, units = "mm")
+# level_prob_hist_file <- "../results/level_prob_hist.png"
+# ggsave(plot = level_prob_hist, file = level_prob_hist_file, 
+#        width = 1100/6, height = 700/6, units = "mm")
 
 ```
 
 ```{r spol-freq-hist, echo = F, warning=F, message=F}
 
-spol_freqs <- as.data.frame.matrix(table(spol_lin_levels_table$spoligotype,
-                           spol_lin_levels_table$level)) %>% gather()
-
-spol_freq_hist <- ggplot(gather(spol_freqs), aes(value))+ 
-  geom_histogram(bins = 11)+
-  xlab("Frequancy of spoligotypes")+
-  facet_wrap(~key)+
-  theme_bw()
-
-spol_freq_hist_file <- "../results/spol_freq_hist.png"
-ggsave(plot = spol_freq_hist, file = spol_freq_hist_file, 
-       width = 1100/6, height = 700/6, units = "mm")
+# spol_freqs <- as.data.frame.matrix(table(spol_lin_levels_table$spoligotype,
+#                            spol_lin_levels_table$level)) %>% gather()
+# 
+# spol_freq_hist <- ggplot(gather(spol_freqs), aes(value))+ 
+#   geom_histogram(bins = 11)+
+#   xlab("Frequancy of spoligotypes")+
+#   facet_wrap(~key)+
+#   theme_bw()
+# 
+# spol_freq_hist_file <- "../results/spol_freq_hist.png"
+# ggsave(plot = spol_freq_hist, file = spol_freq_hist_file, 
+#        width = 1100/6, height = 700/6, units = "mm")
 
 ```
 
 ```{r fam-lin-bar, echo = F, warning=F, message=F}
 
-lv4 <- merge(lv4, select(family_lookup, family, family_group), 
-             by = "family", all.x = T, sort = F)
+# Barplot - x = Family, y = n samps, col = main lin, number on top
 
-fam_lin_cnt <- reshape2::dcast(lv4, family_group ~ 'n_lins', 
-                                  value.var = 'lineage', fun.aggregate = len_uniq)
+fam_lin_n <- reshape2::dcast(spol_data, family_group + lin_level_1 ~ 'n', 
+                      value.var = "sample", fun.aggregate = len_uniq)
 
-y_ticks <- c(0, seq(5, max(fam_lin_cnt$n_lins), 5))
+fam_n <- reshape2::dcast(spol_data, family_group ~ 'n', 
+                      value.var = "sample", fun.aggregate = len_uniq)
 
-fam_n_lins_bar <- ggplot(data = fam_lin_cnt, aes(x = family_group, y = n_lins))+
-  geom_bar(stat = "identity", width=0.7, fill="steelblue")+
+y_ticks <- c(0, seq(500, max(fam_lin_n$n), 500))
+
+fam_lin_n_bar <- ggplot()+
+  geom_bar(data = fam_lin_n, aes(x = family_group, y = n, fill = lin_level_1), 
+           stat = "identity", width=0.7, colour = "black", size = 0.2)+
   xlab("Family")+
-  ylab("N lineages")+
+  ylab("N")+
+  geom_text(data = fam_n, aes(x = family_group, y = n, label = n), vjust=-0.3, size=3.5)+
   scale_y_continuous(breaks = y_ticks)+
   theme_bw()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  guides(fill=guide_legend(title="Lineage"))
 
-fam_n_lins_bar_file <- "../results/fam_n_lins_bar.png"
-ggsave(plot = fam_n_lins_bar, file = fam_n_lins_bar_file, 
+fam_lin_n_bar_file <- "../results/fam_lin_n_bar.png"
+ggsave(plot = fam_lin_n_bar, file = fam_lin_n_bar_file, 
        width = 1100/6, height = 700/6, units = "mm")
+
+# lv4 <- merge(lv4, select(family_lookup, family, family_group), 
+#              by = "family", all.x = T, sort = F)
+# 
+# fam_lin_cnt <- reshape2::dcast(lv4, family_group ~ 'n_lins', 
+#                                   value.var = 'lineage', fun.aggregate = len_uniq)
+# 
+# y_ticks <- c(0, seq(5, max(fam_lin_cnt$n_lins), 5))
+# 
+# fam_n_lins_bar <- ggplot(data = fam_lin_cnt, aes(x = family_group, y = n_lins))+
+#   geom_bar(stat = "identity", width=0.7, fill="steelblue")+
+#   xlab("Family")+
+#   ylab("N lineages")+
+#   scale_y_continuous(breaks = y_ticks)+
+#   theme_bw()+
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# 
+# fam_n_lins_bar_file <- "../results/fam_n_lins_bar.png"
+# ggsave(plot = fam_n_lins_bar, file = fam_n_lins_bar_file, 
+#        width = 1100/6, height = 700/6, units = "mm")
 
 ```
 
 ```{r fam-who-bar, echo = F, warning=F, message=F}
 
+# WHO barplot - x = Family, y = n samps, col = WHO regions
+
 # Spols with at least 5 samples 
-fam_who <- subset(lin_fam_geo_df, lin_fam_geo_df$spoligotype %in% lv4$spoligotype)
+# fam_who <- subset(lin_fam_geo_df, lin_fam_geo_df$spoligotype %in% lv4$spoligotype)
 # Remove unknown WHO
-fam_who <- subset(fam_who, !(WHO_region == "Unknown"))
+# fam_who <- subset(fam_who, !(WHO_region == "Unknown"))
 
-fam_who <- reshape2::dcast(fam_who, family_group ~ 'n_who', value.var = "WHO_region", fun.aggregate = len_uniq)
+fam_who <- reshape2::dcast(spol_data, family_group + WHO_region ~ 'n', 
+                           value.var = "sample", fun.aggregate = len_uniq)
 
-y_ticks <- 0:6
+# fam_who_bar <- ggplot(data = fam_who, aes(x = family_group, y = n))+
+#   geom_bar(stat = "identity", width=0.7, fill = WHO_region)+
+#   xlab("Family")+
+#   ylab("N WHO regions")+
+#   scale_y_continuous(breaks = y_ticks)+
+#   theme_bw()+
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-fam_who_bar <- ggplot(data = fam_who, aes(x = family_group, y = n_who))+
-  geom_bar(stat = "identity", width=0.7, fill="steelblue")+
+fam_who_n_bar <- ggplot()+
+  geom_bar(data = fam_who, aes(x = family_group, y = n, fill = WHO_region), 
+           stat = "identity", width=0.7, colour = "black", size = 0.2)+
   xlab("Family")+
-  ylab("N WHO regions")+
+  ylab("N")+
+  geom_text(data = fam_n, aes(x = family_group, y = n, label = n), vjust=-0.3, size=3.5)+
   scale_y_continuous(breaks = y_ticks)+
   theme_bw()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  guides(fill=guide_legend(title="WHO region"))
 
-fam_who_bar_file <- "../results/fam_who_bar.png"
-ggsave(plot = fam_who_bar, file = fam_who_bar_file, 
+fam_who_n_bar_file <- "../results/fam_who_bar.png"
+ggsave(plot = fam_who_n_bar, file = fam_who_n_bar_file, 
        width = 1100/6, height = 700/6, units = "mm")
 
 ```
 
 ```{r map, echo = F, warning=F, message=F}
 
-
-
-
-library(scatterpie)
-
 # Family
 
 # At least 5 samples
-fam_who <- subset(lin_fam_geo_df, lin_fam_geo_df$spoligotype %in% lv4$spoligotype)
+# fam_who <- subset(lin_fam_geo_df, lin_fam_geo_df$spoligotype %in% lv4$spoligotype)
 # Remove unknown WHO
-fam_who <- subset(fam_who, !(WHO_region == "Unknown"))
+# fam_who <- subset(fam_who, !(WHO_region == "Unknown"))
 # Make table of region and spol family
 # region_family_tab <- as.data.frame.matrix(table(lin_fam_geo_df$subregion, lin_fam_geo_df$family_group))
-region_family_tab <- as.data.frame.matrix(table(fam_who$WHO_region, fam_who$family_group))
+# region_family_tab <- as.data.frame.matrix(table(fam_who$WHO_region, fam_who$family_group))
+region_family_tab <- as.data.frame.matrix(table(spol_data$WHO_region, spol_data$family_group))
 region_family_tab <- data.frame(cbind(WHO_region = row.names(region_family_tab), region_family_tab))
+# Remove unknown
+region_family_tab <- subset(region_family_tab, !(WHO_region == "Unknown"))
 
 # Lineage
-who_lin <- as.data.frame.matrix(table(fam_who$WHO_region, fam_who$main_lin))
+# who_lin <- as.data.frame.matrix(table(fam_who$WHO_region, fam_who$main_lin))
+who_lin <- as.data.frame.matrix(table(spol_data$WHO_region, spol_data$lin_level_1))
 who_lin <- cbind(WHO_region = row.names(who_lin), who_lin)
-
 
 world <- map_data('world')
 # Countries at centre of WHO regions
@@ -1132,8 +1197,8 @@ who_country_df <- merge(who_country_df, long_lat_means,
 region_family_tab <- merge(who_country_df, region_family_tab, by = "WHO_region", all.x = T, sort = F)
 region_family_tab <- merge(region_family_tab, who_lin, by = "WHO_region", all.x = T, sort = F)
 
-fams <- sort(unique(fam_who$family_group))
-lins <- sort(unique(fam_who$main_lin))
+fams <- sort(unique(spol_data$family_group))
+lins <- sort(unique(spol_data$lin_level_1))
 
 # fam_data <- select(region_family_tab, WHO_region, long, lat, AFRI:X)
 # lin_data <- select(region_family_tab, WHO_region, long, lat, "1":La)
@@ -1155,14 +1220,20 @@ fam_lin_map <- fam_map +
                    cols = lins, size = 0.1, legend_name = "Lineage")+
   scale_fill_manual(values = lin_cols)+
   theme_void()
-  
-fam_lin_map
+
+fam_lin_map_file <- paste0(results_path, "fam_lin_map.png")
+ggsave(plot = fam_lin_map, 
+       file = fam_lin_map_file, 
+       width = 1500/7, height = 1000/5, units = "mm")
 
 ```
 
 ```{r supp, echo = F, warning=F, message=F}
 
 spol_lin_levels_table <- "1"
+
+map_figure <- "2"
+trees_figures <- "3"
 
 ```
 
@@ -1419,16 +1490,16 @@ JEP and TGC conceived and directed the project. GN performed bioinformatic and s
 <!-- ``` -->
 
 
-```{r fam-lin-bar-show, echo = F, warning=F, fig.cap = "Spoligotype families and presence (a) in number of lineages and sub-lineages; (b) across WHO regions"}
+```{r fam-lin-bar-show, echo = F, warning=F, fig.cap = "Spoligotype families and number of samples (a) by lineages; (b) across WHO regions"}
 
-knitr::include_graphics(fam_n_lins_bar_file)
+knitr::include_graphics(fam_lin_n_bar_file)
 
 ```
 (a)
 
 ```{r fam-who-bar-show, echo = F, warning=F}
 
-knitr::include_graphics(fam_who_bar_file)
+knitr::include_graphics(fam_who_n_bar_file)
 
 ```
 (b)
@@ -1462,6 +1533,17 @@ knitr::include_graphics(lin4_ggtree)
 knitr::include_graphics(lin5_6_8_9_La_ggtree)
 
 ```
+
+**Supplementary figure 2**
+
+Global map of WHO regions. Inner piechart: Lineage; Outer piechart: Spoligotype family
+
+```{r fam-lin-map, echo = F, warning=F}
+
+knitr::include_graphics(fam_lin_map_file)
+
+```
+
 
 ## TABLES
 
