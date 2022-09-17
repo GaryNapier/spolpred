@@ -313,7 +313,7 @@ if(do_tree == "2"){
                         offset = 0,
                         colnames = F)+
     scale_fill_manual(values = l2_lv2_cols, breaks = names(l2_lv2_cols) )+
-    labs(fill = "Subineage")
+    labs(fill = "Lineage")
   
   l2_ggtree <- l2_ggtree + ggnewscale::new_scale_fill()
   
@@ -324,7 +324,10 @@ if(do_tree == "2"){
                         offset = family_os,
                         colnames = F)+
     scale_fill_manual(values = l2_family_cols, breaks = names(l2_family_cols) )+
-    labs(fill = "Family")
+    labs(fill = "Family")+
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))+
+    ggtitle("Lineage 2")
   
   # Save main figure
   ggsave(file = paste0(results_path, "lin2_ggtree.png"), 
@@ -340,10 +343,8 @@ if(do_tree == "2"){
                         low="white",
                         high="black",
                         colnames = F) +
-    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-    labs(fill = "Spoligotype")+
-    ggtitle("Lineage 2")
-  
+    scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")
+    
   # Save S figure
   ggsave(file = paste0(results_path, "S_lin2_ggtree.png"), 
          plot = l2_ggtree, 
@@ -362,7 +363,7 @@ if(do_tree == "2"){
                         offset = 0,
                         colnames = F)+
     scale_fill_manual(values = l3_lv2_cols, breaks = names(l3_lv2_cols) )+
-    labs(fill = "Subineage")
+    labs(fill = "Lineage")
   
   l3_ggtree <- l3_ggtree + ggnewscale::new_scale_fill()
   
@@ -373,7 +374,10 @@ if(do_tree == "2"){
                         offset = family_os,
                         colnames = F)+
     scale_fill_manual(values = l3_family_cols, breaks = names(l3_family_cols) )+
-    labs(fill = "Family")
+    labs(fill = "Family")+
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))+
+    ggtitle("Lineage 3")
   
   # Save main figure
   ggsave(file = paste0(results_path, "lin3_ggtree.png"), 
@@ -389,8 +393,7 @@ if(do_tree == "2"){
            high="black",
            colnames = F) +
     scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-    labs(fill = "Spoligotype")+
-    ggtitle("Lineage 3")
+    labs(fill = "Spoligotype")
   
   # Save S figure
   ggsave(file = paste0(results_path, "S_lin3_ggtree.png"), 
@@ -406,7 +409,7 @@ if(do_tree == "2"){
   # Lineage
   l4_ggtree <- gheatmap(l4_ggtree, lin_lv2_data_ggplot, color = NA, width = width*2, offset = 0, colnames = F)+
     scale_fill_manual(values = l4_lv2_cols, breaks = names(l4_lv2_cols) )+
-    labs(fill = "Subineage")
+    labs(fill = "Lineage")
 
   l4_ggtree <- l4_ggtree + ggnewscale::new_scale_fill()
 
@@ -414,7 +417,10 @@ if(do_tree == "2"){
   l4_ggtree <- gheatmap(l4_ggtree, l4_family_data, 
                         color = NA, width = width*2, offset = family_os*0.75, colnames = F)+
     scale_fill_manual(values = l4_family_cols, breaks = names(l4_family_cols) )+
-    labs(fill = "Family")
+    labs(fill = "Family")+
+    ggtitle("Lineage 4")+
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))
   
   # Save main figure
   ggsave(file = paste0(results_path, "lin4_ggtree.png"), plot = l4_ggtree, 
@@ -426,11 +432,7 @@ if(do_tree == "2"){
   l4_ggtree <- gheatmap(l4_ggtree, spol_data_ggplot, 
                         offset = spol_os*0.75, color = NA, low="white", high="black", colnames = F) +
     scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-    labs(fill = "Spoligotype")+
-    ggtitle("Lineage 4")+
-    # theme(legend.direction = "vertical", legend.box = "horizontal")
-    theme(legend.text = element_text(size=10), 
-          legend.key.size = unit(0.5, 'cm'))
+    labs(fill = "Spoligotype")
 
   # Save S figure
   ggsave(file = paste0(results_path, "S_lin4_ggtree.png"), plot = l4_ggtree, 
@@ -463,8 +465,8 @@ if(do_tree == "2"){
                           colnames = F)+
     scale_fill_manual(values = lin_1_7_lv2_cols,
                       breaks = names(lin_1_7_lv2_cols), 
-                      name = "Lineage level 2")
-  
+                      name = "Lineage")
+    
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
   
   # Family
@@ -475,7 +477,10 @@ if(do_tree == "2"){
                           colnames = F)+
     scale_fill_manual(values = l1_7_family_cols,
                       breaks = names(l1_7_family_cols), 
-                      name = "Family")
+                      name = "Family")+
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))+
+    ggtitle("Lineages 1 & 7")
   
   l1_7_ggtree <- l1_7_ggtree + ggnewscale::new_scale_fill()
   
@@ -491,10 +496,7 @@ if(do_tree == "2"){
                           high="black",
                           colnames = F)+
     scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-    labs(fill = "Spoligotype")+
-    ggtitle("Lineages 1 & 7")+
-    theme(legend.text = element_text(size=10), 
-          legend.key.size = unit(0.5, 'cm'))
+    labs(fill = "Spoligotype")
   
   # Save S figure
   ggsave(file = paste0(results_path, "S_lin1_7_ggtree.png"), plot = l1_7_ggtree, 
@@ -526,7 +528,14 @@ if(do_tree == "2"){
                                  colnames = F)+
     scale_fill_manual(values = l5_6_8_9_La_family_cols, 
                       breaks = names(l5_6_8_9_La_family_cols), 
-                      name = "Family")
+                      name = "Family")+
+    ggtitle("Lineages 5, 6, 9, La")+
+    theme(legend.text = element_text(size=10), 
+          legend.key.size = unit(0.5, 'cm'))
+  
+  # Save main figure
+  ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "lin5_6_8_9_La_ggtree.png"),
+         width = png_width, height = png_width, units = "mm")
   
   l5_6_8_9_La_ggtree <- l5_6_8_9_La_ggtree + ggnewscale::new_scale_fill()
   
@@ -538,10 +547,7 @@ if(do_tree == "2"){
                           high="black",
                           colnames = F)+
     scale_fill_manual(values=c("white", "black"), labels = c("0", "1", "NA"), na.value = "grey")+
-    labs(fill = "Spoligotype")+
-    ggtitle("Lineages 5, 6, 9, La")+
-    theme(legend.text = element_text(size=10), 
-          legend.key.size = unit(0.5, 'cm'))
+    labs(fill = "Spoligotype")
   
   # Save S figure
   ggsave(plot = l5_6_8_9_La_ggtree, filename = paste0(results_path, "S_lin5_6_8_9_La_ggtree.png"),
