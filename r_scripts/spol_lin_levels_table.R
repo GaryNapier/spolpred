@@ -183,6 +183,16 @@ spol_lin_levels_table$level <- gsub("lin_level_", "", spol_lin_levels_table$leve
 spol_lin_levels_table$prob <- round(spol_lin_levels_table$prob, 2)
 
 write.csv(spol_lin_levels_table, file = spol_lin_levels_table_file, quote = F, row.names = F)
+
+# Make copy with different headers
+
+spol_lin_levels_table_github <- spol_lin_levels_table
+
+names(spol_lin_levels_table_github) <- c("Level", "Lineage", "Spoligotype", "SIT", "Family", 
+                                       "Correlation", "N", "% in level-lineage")
+
+write.csv(spol_lin_levels_table_github, file = "../results/spol_lin_levels_table_github.csv", 
+          quote = F, row.names = F)
  
 # rbind_list_with_names <- function(my_list, name_new_col){
 #   # rbind a list but add the names of each list element as a new col, supplying a name for that new col
