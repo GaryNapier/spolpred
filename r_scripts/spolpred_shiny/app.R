@@ -11,11 +11,27 @@ library(shiny)
 
 # Get data
 
-data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table.csv"
-spol_lin_levels_table <- read.csv(data_url, colClasses = c("spoligotype" = "character"))
+data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
+spol_lin_levels_table <- read.csv(data_url, colClasses = c("Spoligotype" = "character"))
 
 # Clean
-names(spol_lin_levels_table) <- c("Level", "Lineage", "Spoligotype", "SIT", "Family", "Spol-lin-prob", "Freq", "Lin-level_pc")
+# names(spol_lin_levels_table) <- c("Level",
+#                                   "Lineage", 
+#                                   "Spoligotype", 
+#                                   "SIT", 
+#                                   "Family", 
+#                                   "Spol-lin-prob", 
+#                                   "Freq",
+#                                   "Lin-level_pc")
+
+names(spol_lin_levels_table) <- c("Level", 
+                                  "Lineage", 
+                                  "Spoligotype", 
+                                  "SIT", 
+                                  "Family", 
+                                  "Correlation",
+                                  "N",
+                                  "% in level-lineage")
 
 # Define UI
 ui <- fluidPage(
@@ -58,11 +74,11 @@ ui <- fluidPage(
      tags$br(), 
      "- Family: Spoligotype family - see Brudley (2006).", 
      tags$br(), 
-     "- Spol-lin-prob: Scale 0-1 of how associated the spoligotype is to the lineage-level. 1 = spoligotype is uniquely found in the lineage-level. Comparable to Fst score.", 
+     "- Correlation: Scale 0-1 of how associated the spoligotype is to the lineage-level. 1 = spoligotype is uniquely found in the lineage-level. Comparable to Fst score.", 
      tags$br(), 
-     "- Freq: Number of samples with this spoligotype belonging to the lineage-level.",
+     "- N: Number of samples with this spoligotype belonging to the lineage-level.",
      tags$br(), 
-     "- Lin-level-pc: Percentage of samples with this spoligotype at the lineage-level.", 
+     "- % in level-lineage: Percentage of samples with this spoligotype at the level-lineage.", 
      tags$br()
    )),
    
