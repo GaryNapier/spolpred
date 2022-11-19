@@ -1,4 +1,3 @@
-#
 # This is a Shiny web application. You can run the application by clicking
 # the 'Run App' button above.
 #
@@ -9,157 +8,191 @@
 
 library(shiny)
 
-# Get data
-
 data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
 spol_lin_levels_table <- read.csv(data_url, colClasses = c("Spoligotype" = "character"))
 
-# Clean
-# names(spol_lin_levels_table) <- c("Level",
-#                                   "Lineage", 
-#                                   "Spoligotype", 
-#                                   "SIT", 
-#                                   "Family", 
-#                                   "Spol-lin-prob", 
-#                                   "Freq",
-#                                   "Lin-level_pc")
-
-names(spol_lin_levels_table) <- c("Level", 
-                                  "Lineage", 
-                                  "Spoligotype", 
-                                  "SIT", 
-                                  "Family", 
+names(spol_lin_levels_table) <- c("Level",
+                                  "Lineage",
+                                  "Spoligotype",
+                                  "SIT",
+                                  "Family",
                                   "Correlation",
                                   "N",
                                   "% in level-lineage")
 
-# Define UI
+# Define UI for application that draws a histogram
 ui <- fluidPage(
+  titlePanel("Spoligotype and SNP-based lineage associations"),
   
+  # mainPanel(
+  tags$br(),
+  img(src="LSHTM-logo-bw.jpeg", width='400px'),
+  tags$br(),
+  tags$br(),
+  img(src="tb-profiler-logo.png", width='400px'),
+  
+  h4(tags$div(
+    "Data source:",
+    data_url,
+    tags$br(), tags$br()
+  )),
+  
+  h3(tags$div(
+    "Data description:",
+    tags$br()
+  )),
+  
+  h4(tags$div(
+    "This is a table of associations between spoligotypes and SNP-based lineages defined in Napier (2020).",
+    tags$br(),
+    "Lineages are in a numerical hierarchy - 1, 1.1, 1.1.1 etc. - which have been given a 'Level' - 1, 2, 3 etc",
+    tags$br(),
+    "The important column is 'Correlation' which measures how closely associated a given spoligotype is to a lineage, at that level.",
+    tags$br(),
+    "A score of 1 means the spoligotype is uniquely found in the lineage-level.",
+    tags$br(),
+    tags$br(),
+    "Example:",
+    tags$br(),
+    tags$br(),
+    tableOutput("example"),
+    tags$br(),
+    "Spoligotype 110...111 (SIT 19) is correlated 1 with lineage 1 (level 1). i.e. this spoligotype is only found
+    in this lineage.",
+    tags$br(),
+    tags$br(),
+    "Columns:",
+    tags$br(),
+    tags$br(),
+    "- Level: Level of the lineage hierarchy (e.g. 1 = level 1, 1.1 = level 2, 1.1.1 = level 3 etc.)",
+    tags$br(),
+    tags$br(),
+    "- Lineage: Lineages in Napier (2020).",
+    tags$br(),
+    tags$br(),
+    "- Spoligotype: Spoligotype predicted by TB-Profiler (Phelan 2019).",
+    tags$br(),
+    tags$br(),
+    "- SIT: SIT number from SITVIT2; database of genotyping markers for Mtb.",
+    tags$br(),
+    tags$br(),
+    "- Family: Spoligotype family - see Brudley (2006).",
+    tags$br(),
+    tags$br(),
+    "- Correlation: Scale 0-1 of how associated the spoligotype is to the lineage-level. 1 = spoligotype is uniquely found in the lineage-level. Comparable to Fst score.",
+    tags$br(),
+    tags$br(),
+    "- N: Number of samples with this spoligotype belonging to the lineage-level.",
+    tags$br(),
+    tags$br(),
+    "- % in level-lineage: Percentage of samples with this spoligotype at the level-lineage.",
+    tags$br()
+  )),
+  
+  h4(tags$div(
+    tags$br(),
+    tags$br(),
+    "Comprehensive MTBC tree from Napier 2020"
+  )),
+  
+  tags$br(),
+  img(src="mtbc_tree.png", width='1000px'),
+  tags$br(),
+  
+  h5(tags$div(
+    "References: ",
+    tags$br(),
+    tags$br(),
+    "Napier, G., Campino, S., Merid, Y. et al. Robust barcoding and identification of Mycobacterium tuberculosis lineages for epidemiological and clinical studies. Genome Med 12, 114 (2020). https://doi.org/10.1186/s13073-020-00817-3",
+    tags$br(),
+    tags$br(),
+    "Phelan, J. E. et al. Integrating informatics tools and portable sequencing technology for rapid detection of resistance to anti-tuberculous drugs. Genome Med. 11, 41 (2019).",
+    tags$br(),
+    tags$br(),
+    "SITVIT2: http://www.pasteur-guadeloupe.fr:8081/SITVIT2/",
+    tags$br(),
+    tags$br(),
+    "Brudey, K., Driscoll, J.R., Rigouts, L. et al. Mycobacterium tuberculosis complex genetic diversity: mining the fourth international spoligotyping database (SpolDB4) for classification, population genetics and epidemiology. BMC Microbiol 6, 23 (2006). https://doi.org/10.1186/1471-2180-6-23",
+    tags$br(),
+    tags$br()
+  )),
+  
+  sidebarLayout(
+    sidebarPanel(
+      helpText("Filter results table (enter comma-separated values for multiple)"),
+      textInput(inputId = "level", label = "Level"),
+      # checkboxInput("level", "A filter"),
+      textInput(inputId = "lineage", label = "Lineage"),
+      textInput(inputId = "spoligotype", label = "Spoligotype"),
+      textInput(inputId = "SIT", label = "SIT"),
+      textInput(inputId = "family", label = "Family"),
+      submitButton("Submit")
+    ), # sidebarPanel
+    
     mainPanel(
-      tags$br(),
-      img(src="LSHTM-logo-bw.jpeg", width='400px'),
-      tags$br(),
-      tags$br(),
-      img(src="tb-profiler-logo.png", width='400px'),
-
-   # Application title
-   titlePanel("Spoligotype and lineage associations"),
-   
-   h4(tags$div(
-     "Data source:", 
-     data_url,
-     tags$br(), tags$br()
-   )), 
-   
-   h3(tags$div(
-     "Data description:", 
-     tags$br()
-   )),
-   
-   h4(tags$div(
-     "Lineages are taken from Napier (2020). They are arranged in a numerical hierarchy (e.g. 1, 1.1, 1.1.1 etc.) - see tree figure below",
-     tags$br(), 
-     tags$br(), 
-     "Columns:", 
-     tags$br(), 
-     tags$br(), 
-     "- Level: Level of the lineage hierarchy (e.g. 1 = level 1, 1.1 = level 2, 1.1.1 = level 3 etc.)",
-     tags$br(), 
-     "- Lineage: Lineages in Napier (2020).",
-     tags$br(), 
-     "- Spoligotype: Spoligotype predicted by TB-Profiler (Phelan 2019).",
-     tags$br(), 
-     "- SIT: SIT number from SITVIT2; database of genotyping markers for Mtb.", 
-     tags$br(), 
-     "- Family: Spoligotype family - see Brudley (2006).", 
-     tags$br(), 
-     "- Correlation: Scale 0-1 of how associated the spoligotype is to the lineage-level. 1 = spoligotype is uniquely found in the lineage-level. Comparable to Fst score.", 
-     tags$br(), 
-     "- N: Number of samples with this spoligotype belonging to the lineage-level.",
-     tags$br(), 
-     "- % in level-lineage: Percentage of samples with this spoligotype at the level-lineage.", 
-     tags$br()
-   )),
-   
-   h5(tags$div(
-     "References: ", 
-     tags$br(), 
-     "Napier, G., Campino, S., Merid, Y. et al. Robust barcoding and identification of Mycobacterium tuberculosis lineages for epidemiological and clinical studies. Genome Med 12, 114 (2020). https://doi.org/10.1186/s13073-020-00817-3", 
-     tags$br(), 
-     "Phelan, J. E. et al. Integrating informatics tools and portable sequencing technology for rapid detection of resistance to anti-tuberculous drugs. Genome Med. 11, 41 (2019).", 
-     tags$br(), 
-     "SITVIT2: http://www.pasteur-guadeloupe.fr:8081/SITVIT2/", 
-     tags$br(), 
-     "Brudey, K., Driscoll, J.R., Rigouts, L. et al. Mycobacterium tuberculosis complex genetic diversity: mining the fourth international spoligotyping database (SpolDB4) for classification, population genetics and epidemiology. BMC Microbiol 6, 23 (2006). https://doi.org/10.1186/1471-2180-6-23", 
-     tags$br()
-   )),
-   
-   tags$br(),
-   img(src="mtbc_tree.png", width='1000px'),
-   tags$br(),
-   
-   
-   h4(tags$div(
-     "Usage: Input spoligotype into box, e.g. 1111111111111111111111111111000010111110111"
-   )), 
-   
-   # Sidebar with texbox input
-   sidebarLayout(
-      sidebarPanel(
-        textInput(inputId = "spoligotype", 
-                  label = "Input spoligotype(s) (comma separated)"),
-        actionButton("textSearchButton", "See table")
-      ),
       
-      # Show a table
-      fluidRow(
-        column(12, align="center", tableOutput("spol_out"))
-      ) # fluidRow
-   ) # sidebarLayout
-
-   
-) # mainPanel
-) # fluidPage
+      tableOutput("spol_out"),
+      downloadButton('downloadData', 'Download')
+    )
+  )
+)
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-   
-   # output$distPlot <- renderPlot({
-      # generate bins based on input$bins from ui.R
-      # x    <- faithful[, 2] 
-      # bins <- seq(min(x), max(x), length.out = input$bins + 1)
-      
-      # draw the histogram with the specified number of bins
-      # hist(x, breaks = bins, col = 'darkgray', border = 'white')
-   # })
   
-  spol_df <- eventReactive(input$textSearchButton, {
-    # outputFunc(input$textBox, df)
-    req(input$spoligotype)
-    spols <- unlist(strsplit(input$spoligotype, ","))
-    # return(data.frame(Code = spols,
-    #                   Description = "Something here",
-    #                   Value = "Some value"))
-    return(subset(spol_lin_levels_table, Spoligotype %in% spols))
+  output$example <- renderTable({
+    df <- data.frame(
+      Level = "1",
+      Lineage = "1",
+      Spoligotype = "1101111111111111111001111111000010111111111",
+      SIT = "19",
+      Family = "EAI2-Manila",
+      Correlation = 1.00,
+      N = "402",
+      pc = 17.20
+    )
+    df <- dplyr::rename(df, "% in level-lineage" = pc)
+    df
   })
-  output$spol_out <- renderTable({
-    spol_df()
-  })
-}
+  
+  # Subset the table for the main results
+  
+  df <- reactive({spol_lin_levels_table})
+  
+  output$spol_out <- renderTable({filter_df()}) # renderTable
+  
+  filter_df <- reactive({
+    # req(!is.null(input$level))
+    if (isTruthy(input$level) |
+        isTruthy(input$lineage) |
+        isTruthy(input$input$spoligotype) |
+        isTruthy(input$SIT) |
+        isTruthy(input$family)){
+      subset(spol_lin_levels_table,
+             Level %in% unlist(strsplit(input$level, ",")) |
+               Lineage %in% unlist(strsplit(input$lineage, ",")) |
+               Spoligotype %in% unlist(strsplit(input$spoligotype, ",")) |
+               SIT %in% unlist(strsplit(input$SIT, ",")) |
+               Family %in% unlist(strsplit(input$family, ","))
+      ) # subset
+    } else {
+      df()
+    }
+  }) # reactive
+  
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste("spol_correlation_", Sys.Date(), ".csv", sep="")
+    },
+    content = function(file) {
+      write.csv(filter_df(), file, row.names = F) # call to the reactive again
+    }
+  )
+  
+} # server()
 
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)
-
-
-# Test spol:
-# 1111111111111111111111111111000010111110111
-
-
-
-
-
-
 
 
 
