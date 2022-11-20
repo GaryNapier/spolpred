@@ -936,13 +936,15 @@ main_sublins <- lapply(lv4_split, function(x){
   pcs <- x$freq/sum(x$freq)
   which_pcs_gr_5 <- which(pcs >= 0.05)
   pcs_gr_5 <- round(pcs[which_pcs_gr_5]*100, 1)
-  lins_gr_5 <- x[which_pcs_gr_5, "lineage"]
-  lins_pcs <- paste0(lins_gr_5, " (", pcs_gr_5, ")", collapse = "; ")
+  # lins_gr_5 <- x[which_pcs_gr_5, "lineage"]
+  lins_SIT_gr_5 <- paste0(x[which_pcs_gr_5, "lineage"], " [", x[which_pcs_gr_5, "SIT"], "]")
+  lins_pcs <- paste0(lins_SIT_gr_5, " (", pcs_gr_5, ")", collapse = "; ")
   # data.frame(spoligotype = unique(x$spoligotype), 
   #                  main_sublins = lins_pcs)
   data.frame(family = unique(x$family), 
                    main_sublins = lins_pcs)
 })
+
 main_sublins <- do.call("rbind", main_sublins)
 
 # WHO regions
@@ -1001,7 +1003,7 @@ s2 <- dplyr::rename(s2, "Family group" = family_group,
              Family = family, 
              "N samples" = n, 
              "N sublineages" = n_sublin,
-             "Main sublineages (%)" = main_sublins)
+             "Main sublineages [SIT] (%)" = main_sublins)
 
 s2_table_file <- "../results/s2_table.csv"
 write.csv(s2, file = s2_table_file, quote = F, row.names = F)
