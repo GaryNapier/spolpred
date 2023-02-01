@@ -9,16 +9,6 @@
 library(shiny)
 
 data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
-spol_lin_levels_table <- read.csv(data_url, colClasses = c("Spoligotype" = "character"))
-
-names(spol_lin_levels_table) <- c("Level",
-                                  "Lineage",
-                                  "Spoligotype",
-                                  "SIT",
-                                  "Family",
-                                  "Correlation",
-                                  "N",
-                                  "% in level-lineage")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -118,27 +108,47 @@ ui <- fluidPage(
   )),
   
   sidebarLayout(
+    
     sidebarPanel(
       helpText("Filter results table (enter comma-separated values for multiple)"),
-      textInput(inputId = "level", label = "Level"),
-      # checkboxInput("level", "A filter"),
-      textInput(inputId = "lineage", label = "Lineage"),
-      textInput(inputId = "spoligotype", label = "Spoligotype"),
-      textInput(inputId = "SIT", label = "SIT"),
-      textInput(inputId = "family", label = "Family"),
+      textInput(inputId = "level", 
+                label = "Level", 
+                value = NULL),
+      textInput(inputId = "lineage",
+                label = "Lineage",
+                value = NULL),
+      textInput(inputId = "spoligotype",
+                label = "Spoligotype",
+                value = NULL),
+      textInput(inputId = "SIT",
+                label = "SIT",
+                value = NULL),
+      textInput(inputId = "family",
+                label = "Family",
+                value = NULL),
       submitButton("Submit")
     ), # sidebarPanel
     
     mainPanel(
-      
       tableOutput("spol_out"),
       downloadButton('downloadData', 'Download')
     )
-  )
+  ) # sidebarLayout
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output) {
+  
+  # data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
+  spol_lin_levels_table <- read.csv(data_url, colClasses = c("Spoligotype" = "character"))
+  
+  names(spol_lin_levels_table) <- c("Level",
+                                    "Lineage",
+                                    "Spoligotype",
+                                    "SIT",
+                                    "Family",
+                                    "Correlation",
+                                    "N",
+                                    "% in level-lineage")
   
   output$example <- renderTable({
     df <- data.frame(
@@ -156,29 +166,60 @@ server <- function(input, output) {
   })
   
   # Subset the table for the main results
+
+  level_values <- reactive({
+    if (isTruthy(input$level)) {
+      return(input$level)
+    } else {
+      return(unique(spol_lin_levels_table$Level))
+    }
+  })
   
-  df <- reactive({spol_lin_levels_table})
+  lineage_values <- reactive({
+    if (isTruthy(input$lineage)) {
+      return(input$lineage)
+    } else {
+      return(unique(spol_lin_levels_table$Lineage))
+    }
+  })
   
-  output$spol_out <- renderTable({filter_df()}) # renderTable
+  spol_values <- reactive({
+    if (isTruthy(input$spoligotype)) {
+      return(input$spoligotype)
+    } else {
+      return(unique(spol_lin_levels_table$Spoligotype))
+    }
+  })
+  
+  sit_values <- reactive({
+    if (isTruthy(input$SIT)) {
+      return(input$SIT)
+    } else {
+      return(unique(spol_lin_levels_table$SIT))
+    }
+  })
+  
+  family_values <- reactive({
+    if (isTruthy(input$family)) {
+      return(input$family)
+    } else {
+      return(unique(spol_lin_levels_table$Family))
+    }
+  })
+  
   
   filter_df <- reactive({
-    # req(!is.null(input$level))
-    if (isTruthy(input$level) |
-        isTruthy(input$lineage) |
-        isTruthy(input$input$spoligotype) |
-        isTruthy(input$SIT) |
-        isTruthy(input$family)){
-      subset(spol_lin_levels_table,
-             Level %in% unlist(strsplit(input$level, ",")) |
-               Lineage %in% unlist(strsplit(input$lineage, ",")) |
-               Spoligotype %in% unlist(strsplit(input$spoligotype, ",")) |
-               SIT %in% unlist(strsplit(input$SIT, ",")) |
-               Family %in% unlist(strsplit(input$family, ","))
-      ) # subset
-    } else {
-      df()
-    }
+    return(spol_lin_levels_table %>% 
+             filter(Level %in% level_values(),
+                    Lineage %in% lineage_values(),
+                    Spoligotype %in% spol_values(),
+                    SIT %in% sit_values(),
+                    Family %in% family_values()
+                    ) # filter
+    ) # return
   }) # reactive
+  
+  output$spol_out <- renderTable({filter_df()}) # renderTable
   
   output$downloadData <- downloadHandler(
     filename = function() {
@@ -193,8 +234,6 @@ server <- function(input, output) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
-
-
 
 
 
