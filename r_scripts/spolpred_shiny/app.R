@@ -7,6 +7,14 @@
 #
 
 library(shiny)
+library(dplyr)
+
+# Functions
+
+# Split input on comma (default) to provide vector - allows multiple selection in textbox
+to_vect <- function(x, split_on = ","){
+  unlist(strsplit(x, split_on))
+}
 
 data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
 
@@ -138,7 +146,8 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
-  # data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
+  data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
+  
   spol_lin_levels_table <- read.csv(data_url, colClasses = c("Spoligotype" = "character"))
   
   names(spol_lin_levels_table) <- c("Level",
@@ -169,7 +178,7 @@ server <- function(input, output) {
 
   level_values <- reactive({
     if (isTruthy(input$level)) {
-      return(input$level)
+      return(to_vect(input$level))
     } else {
       return(unique(spol_lin_levels_table$Level))
     }
@@ -177,7 +186,7 @@ server <- function(input, output) {
   
   lineage_values <- reactive({
     if (isTruthy(input$lineage)) {
-      return(input$lineage)
+      return(to_vect(input$lineage))
     } else {
       return(unique(spol_lin_levels_table$Lineage))
     }
@@ -185,7 +194,7 @@ server <- function(input, output) {
   
   spol_values <- reactive({
     if (isTruthy(input$spoligotype)) {
-      return(input$spoligotype)
+      return(to_vect(input$spoligotype))
     } else {
       return(unique(spol_lin_levels_table$Spoligotype))
     }
@@ -193,7 +202,7 @@ server <- function(input, output) {
   
   sit_values <- reactive({
     if (isTruthy(input$SIT)) {
-      return(input$SIT)
+      return(to_vect(input$SIT))
     } else {
       return(unique(spol_lin_levels_table$SIT))
     }
@@ -201,12 +210,11 @@ server <- function(input, output) {
   
   family_values <- reactive({
     if (isTruthy(input$family)) {
-      return(input$family)
+      return(to_vect(input$family))
     } else {
       return(unique(spol_lin_levels_table$Family))
     }
   })
-  
   
   filter_df <- reactive({
     return(spol_lin_levels_table %>% 
