@@ -9,14 +9,14 @@
 library(shiny)
 library(dplyr)
 
-# Functions
+# Functions ----
 
 # Split input on comma (default) to provide vector - allows multiple selection in textbox
 to_vect <- function(x, split_on = ","){
   unlist(strsplit(x, split_on))
 }
 
-data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
+data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_43_table_github.csv"
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -64,30 +64,62 @@ ui <- fluidPage(
     tags$br(),
     "- Level: Level of the lineage hierarchy (e.g. 1 = level 1, 1.1 = level 2, 1.1.1 = level 3 etc.)",
     tags$br(),
-    tags$br(),
     "- Lineage: Lineages in Napier (2020).",
-    tags$br(),
     tags$br(),
     "- Spoligotype: Spoligotype predicted by TB-Profiler (Phelan 2019).",
     tags$br(),
-    tags$br(),
     "- SIT: SIT number from SITVIT2; database of genotyping markers for Mtb.",
-    tags$br(),
     tags$br(),
     "- Family: Spoligotype family - see Brudley (2006).",
     tags$br(),
-    tags$br(),
     "- Correlation: Scale 0-1 of how associated the spoligotype is to the lineage-level. 1 = spoligotype is uniquely found in the lineage-level. Comparable to Fst score.",
-    tags$br(),
     tags$br(),
     "- N: Number of samples with this spoligotype belonging to the lineage-level.",
     tags$br(),
-    tags$br(),
     "- % in level-lineage: Percentage of samples with this spoligotype at the level-lineage.",
+    tags$br(),
+    style = 'width:1000px', align = "justify"
+  )),
+  
+  h3(tags$div(
+    "Main results:",
     tags$br()
   )),
   
   h4(tags$div(
+    "The plots below show the relationships between the SNP-based lineages and the spoligotypes.
+    The variation in '% in level-lineage' and 'Correlation' columns are plotted by lineage level and grouped 
+    by main lineage. 
+    The main message is that variation in both measures increases at the lower lineage levels, 
+    reflecting noise in the spoligotypes.",
+    style = 'width:1000px', align = "justify",
+    tags$br()
+  )),
+  
+  tags$br(),
+  img(src="spol_43_boxplots.png", width='1000px'),
+  tags$br(),
+  
+  tags$br(),
+  img(src="spol_68_boxplots.png", width='1000px'),
+  tags$br(),
+  
+  h5(tags$div(
+    tags$br(),
+    tags$br(),
+    "Top panels: The maximum percentage of samples with a spoligotype at that lineage-level 
+    ('% in level-lineage' column) increases as the lineage level decreases (1-4). 
+    At the same time, there is more variation in these percentages at the lower lineage levels.
+    For example, for lineage 1, level 1, the highest percentage of samples is 17.2, for spoligotype SIT-19 (n=402).
+    Then, at lowest level (4), 100% of samples in lineage 1.1 have spoligotype SIT-939, 
+    however, there are only n=14 samples in this lineage-level. 
+    Bottom panels: At the lower lineage levels (1-4), there remain spoligotypes with correlation 1, 
+    but the variation in correlation scores increases, reflecting noise in the spoligotypes,
+    Red diamond = maximum values.", 
+    style = 'width:1000px', align = "justify"
+  )),
+  
+  h3(tags$div(
     tags$br(),
     tags$br(),
     "Comprehensive MTBC tree from Napier 2020"
@@ -112,7 +144,8 @@ ui <- fluidPage(
     tags$br(),
     "Brudey, K., Driscoll, J.R., Rigouts, L. et al. Mycobacterium tuberculosis complex genetic diversity: mining the fourth international spoligotyping database (SpolDB4) for classification, population genetics and epidemiology. BMC Microbiol 6, 23 (2006). https://doi.org/10.1186/1471-2180-6-23",
     tags$br(),
-    tags$br()
+    tags$br(), 
+    style = 'width:1000px', align = "justify"
   )),
   
   sidebarLayout(
@@ -138,26 +171,46 @@ ui <- fluidPage(
     ), # sidebarPanel
     
     mainPanel(
-      tableOutput("spol_out"),
-      downloadButton('downloadData', 'Download')
+      
+      tabsetPanel(
+        # tabPanel("Expression values", tableOutput("mainTable")),
+        # tabPanel("ID filtering", tableOutput("table"))
+        # tableOutput("spol_out"),
+        # downloadButton('downloadData', 'Download')
+        tabPanel("43-spacer spol", tableOutput("spol_out_43"), 
+                 downloadButton('downloadData_43', 'Download')),
+        tabPanel("68-spacer spol", tableOutput("spol_out_68"), 
+                 downloadButton('downloadData_68', 'Download'))
+      ) # tabsetPanel
     )
   ) # sidebarLayout
 )
 
 server <- function(input, output) {
   
-  data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
+  spol_data_43_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
+  spol_data_68_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_68_github.csv"
   
-  spol_lin_levels_table <- read.csv(data_url, colClasses = c("Spoligotype" = "character"))
+  spol_43_table <- read.csv(spol_data_43_url, colClasses = c("Spoligotype" = "character"))
+  spol_68_table <- read.csv(spol_data_68_url, colClasses = c("Spoligotype" = "character"))
   
-  names(spol_lin_levels_table) <- c("Level",
-                                    "Lineage",
-                                    "Spoligotype",
-                                    "SIT",
-                                    "Family",
-                                    "Correlation",
-                                    "N",
-                                    "% in level-lineage")
+  names(spol_43_table) <- c("Level",
+                            "Lineage",
+                            "Spoligotype",
+                            "SIT",
+                            "Family",
+                            "Correlation",
+                            "N",
+                            "% in level-lineage")
+  
+  names(spol_68_table) <- c("Level",
+                            "Lineage",
+                            "Spoligotype",
+                            "SIT",
+                            "Family",
+                            "Correlation",
+                            "N",
+                            "% in level-lineage")
   
   output$example <- renderTable({
     df <- data.frame(
@@ -176,11 +229,13 @@ server <- function(input, output) {
   
   # Subset the table for the main results
 
+  # 68-spacer
+  
   level_values <- reactive({
     if (isTruthy(input$level)) {
       return(to_vect(input$level))
     } else {
-      return(unique(spol_lin_levels_table$Level))
+      return(unique(spol_43_table$Level))
     }
   })
   
@@ -188,7 +243,7 @@ server <- function(input, output) {
     if (isTruthy(input$lineage)) {
       return(to_vect(input$lineage))
     } else {
-      return(unique(spol_lin_levels_table$Lineage))
+      return(unique(spol_43_table$Lineage))
     }
   })
   
@@ -196,7 +251,7 @@ server <- function(input, output) {
     if (isTruthy(input$spoligotype)) {
       return(to_vect(input$spoligotype))
     } else {
-      return(unique(spol_lin_levels_table$Spoligotype))
+      return(unique(spol_43_table$Spoligotype))
     }
   })
   
@@ -204,7 +259,7 @@ server <- function(input, output) {
     if (isTruthy(input$SIT)) {
       return(to_vect(input$SIT))
     } else {
-      return(unique(spol_lin_levels_table$SIT))
+      return(unique(spol_43_table$SIT))
     }
   })
   
@@ -212,12 +267,63 @@ server <- function(input, output) {
     if (isTruthy(input$family)) {
       return(to_vect(input$family))
     } else {
-      return(unique(spol_lin_levels_table$Family))
+      return(unique(spol_43_table$Family))
     }
   })
   
-  filter_df <- reactive({
-    return(spol_lin_levels_table %>% 
+  level_values <- reactive({
+    if (isTruthy(input$level)) {
+      return(to_vect(input$level))
+    } else {
+      return(unique(spol_43_table$Level))
+    }
+  })
+  
+  # 68-spacer
+  
+  level_values_68 <- reactive({
+    if (isTruthy(input$level)) {
+      return(to_vect(input$level))
+    } else {
+      return(unique(spol_68_table$Level))
+    }
+  })
+  
+  lineage_values_68 <- reactive({
+    if (isTruthy(input$lineage)) {
+      return(to_vect(input$lineage))
+    } else {
+      return(unique(spol_68_table$Lineage))
+    }
+  })
+  
+  spol_values_68 <- reactive({
+    if (isTruthy(input$spoligotype)) {
+      return(to_vect(input$spoligotype))
+    } else {
+      return(unique(spol_68_table$Spoligotype))
+    }
+  })
+  
+  sit_values_68 <- reactive({
+    if (isTruthy(input$SIT)) {
+      return(to_vect(input$SIT))
+    } else {
+      return(unique(spol_68_table$SIT))
+    }
+  })
+  
+  family_values_68 <- reactive({
+    if (isTruthy(input$family)) {
+      return(to_vect(input$family))
+    } else {
+      return(unique(spol_68_table$Family))
+    }
+  })
+  
+  
+  filter_df_43 <- reactive({
+    return(spol_43_table %>% 
              filter(Level %in% level_values(),
                     Lineage %in% lineage_values(),
                     Spoligotype %in% spol_values(),
@@ -227,14 +333,35 @@ server <- function(input, output) {
     ) # return
   }) # reactive
   
-  output$spol_out <- renderTable({filter_df()}) # renderTable
+  filter_df_68 <- reactive({
+    return(spol_68_table %>% 
+             filter(Level %in% level_values_68(),
+                    Lineage %in% lineage_values_68(),
+                    Spoligotype %in% spol_values_68(),
+                    SIT %in% sit_values_68(),
+                    Family %in% family_values_68()
+             ) # filter
+    ) # return
+  }) # reactive
   
-  output$downloadData <- downloadHandler(
+  output$spol_out_43 <- renderTable({filter_df_43()})
+  output$spol_out_68 <- renderTable({filter_df_68()}) 
+  
+  output$downloadData_43 <- downloadHandler(
     filename = function() {
-      paste("spol_correlation_", Sys.Date(), ".csv", sep="")
+      paste("spol_correlation_43_", Sys.Date(), ".csv", sep="")
     },
     content = function(file) {
-      write.csv(filter_df(), file, row.names = F) # call to the reactive again
+      write.csv(filter_df_43(), file, row.names = F) # call to the reactive again
+    }
+  )
+  
+  output$downloadData_68 <- downloadHandler(
+    filename = function() {
+      paste("spol_correlation_68_", Sys.Date(), ".csv", sep="")
+    },
+    content = function(file) {
+      write.csv(filter_df_68(), file, row.names = F) # call to the reactive again
     }
   )
   
