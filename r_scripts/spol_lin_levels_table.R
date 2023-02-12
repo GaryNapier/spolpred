@@ -2,6 +2,8 @@
 library(dplyr)
 library(stringr)
 
+# Functions ----
+
 # Paths ----
 
 setwd("~/Documents/spolpred/r_scripts")
@@ -22,7 +24,8 @@ spol_lin_levels_table_file <- paste0(results_path, "spol_lin_levels_table.csv")
 spol_data <- read.csv(spol_data_file, header = T, 
                       colClasses = c("spoligotype" = "character"))
 
-animal <- read.csv(animal_file)
+animal <- read.csv(animal_file, header = T, 
+                   colClasses = c("spoligotype" = "character"))
 
 # Clean data ----
 
@@ -193,6 +196,57 @@ names(spol_lin_levels_table_github) <- c("Level", "Lineage", "Spoligotype", "SIT
 
 write.csv(spol_lin_levels_table_github, file = "../results/spol_lin_levels_table_github.csv", 
           quote = F, row.names = F)
+
+
+# Plot ----
+
+# Get main lineage
+spol_lin_levels_table$main_lin <- unlist(lapply(strsplit(spol_lin_levels_table$lineage, "\\."), 
+                                                function(x){x[1]}))
+# Clean up animal
+spol_lin_levels_table$main_lin <- ifelse(grepl("La", spol_lin_levels_table$main_lin), 
+                                         "La", 
+                                         spol_lin_levels_table$main_lin)
+
+pc_plot <- ggplot(data = spol_lin_levels_table, 
+                  aes(x = main_lin, 
+                      y = col_prob, 
+                      fill = main_lin))+
+  geom_boxplot(outlier.size = 1,
+               outlier.stroke = 0.2, 
+               size = 0.2)+
+  stat_summary(fun = max, geom = "point", shape = 18,
+               size = 5, color = "red")+
+  xlab("Main lineage")+
+  ylab("%")+
+  ggtitle("% of samples with a spol. at a lineage-level")+
+  facet_wrap(~level)+
+  theme_bw()+
+  theme(legend.position="none")
+
+cor_plot <- ggplot(data = spol_lin_levels_table, 
+                   aes(x = main_lin, 
+                       y = prob, 
+                       fill = main_lin))+
+  geom_boxplot(outlier.size = 1,
+               outlier.stroke = 0.2, 
+               size = 0.2)+
+  stat_summary(fun = max, geom = "point", shape = 18,
+               size = 5, color = "red")+
+  xlab("Main lineage")+
+  ylab("Correlation score")+
+  ggtitle("Lineage-level-spoligotype correlation")+
+  facet_wrap(~level)+
+  theme_bw()+
+  theme(legend.position="none")
+
+boxplots <- grid.arrange(pc_plot, cor_plot,
+                         nrow = 2, 
+                         top = textGrob("43-spacer spoligotypes",
+                                        gp = gpar(fontsize=20)))
+
+ggsave(filename = paste0(results_path, "spol_43_boxplots.png"), boxplots)
+ggsave(filename = "spolpred_shiny/www/spol_43_boxplots.png", boxplots)
  
 # rbind_list_with_names <- function(my_list, name_new_col){
 #   # rbind a list but add the names of each list element as a new col, supplying a name for that new col
