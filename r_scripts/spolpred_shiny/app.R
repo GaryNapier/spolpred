@@ -8,6 +8,11 @@
 
 library(shiny)
 library(dplyr)
+library(ape)
+library(phytools)
+library(ggplot2)
+library(ggtree)
+library(gridExtra)
 
 # Functions ----
 
@@ -15,6 +20,8 @@ library(dplyr)
 to_vect <- function(x, split_on = ","){
   unlist(strsplit(x, split_on))
 }
+
+# Data source ----
 
 data_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_43_table_github.csv"
 
@@ -43,7 +50,15 @@ ui <- fluidPage(
   h4(tags$div(
     "This is a table of associations between spoligotypes and SNP-based lineages defined in Napier (2020).",
     tags$br(),
-    "Lineages are in a numerical hierarchy - 1, 1.1, 1.1.1 etc. - which have been given a 'Level' - 1, 2, 3 etc",
+    "Lineages are in a numerical hierarchy - 1, 1.1, 1.1.1 etc. - which have been given a 'Level' - 1, 2, 3 etc - e.g.:",
+    tags$br(),
+    tags$br(),
+    plotOutput("levels_plot"), 
+    tags$br(),
+    tags$br(),
+    tags$br(),
+    tags$br(),
+    tags$br(),
     tags$br(),
     "The important column is 'Correlation' which measures how closely associated a given spoligotype is to a lineage, at that level.",
     tags$br(),
@@ -187,6 +202,59 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
+  
+  # Levels illustration ----
+  
+  n <- 20
+  title_sz <- 24
+  set.seed(1)
+  
+  tree <- midpoint.root(rcoal(n = n, tip.label = LETTERS[1:n]))
+  tree$tip.label <- sort(tree$tip.label)
+  
+  dat_lv1 <- data.frame(id = c(22, 27), Lineage = c("Lineage 1", "Lineage 2"))
+  lv1 <- ggtree(tree)+
+    geom_tiplab()+
+    # geom_text(aes(label=node), hjust=2, vjust = -1)+
+    geom_hilight(data = dat_lv1, 
+                 mapping = aes(node = id, fill = Lineage))+
+    # scale_fill_manual(values=c("blue", "darkred"))+
+    ggtitle("Level 1")+
+    theme(plot.title = element_text(size = title_sz))
+  
+  dat_lv2 <- data.frame(id = c(38, 28), Lineage = c("Lineage 2.1", "Lineage 2.2"))
+  lv2 <- ggtree(tree)+
+    geom_tiplab()+
+    # geom_text(aes(label=node), hjust=2, vjust = -1)+
+    geom_hilight(data = dat_lv2, 
+                 mapping = aes(node = id, fill = Lineage))+
+    ggtitle("Level 2")+
+    theme(plot.title = element_text(size = title_sz))
+  
+  dat_lv3 <- data.frame(id = c(36, 29), Lineage = c("Lineage 2.2.1", "Lineage 2.2.2"))
+  lv3 <- ggtree(tree)+
+    geom_tiplab()+
+    # geom_text(aes(label=node), hjust=2, vjust = -1)+
+    geom_hilight(data = dat_lv3, 
+                 mapping = aes(node = id, fill = Lineage))+
+    ggtitle("Level 3")+
+    theme(plot.title = element_text(size = title_sz))
+  
+  dat_lv4 <- data.frame(id = c(35, 30), Lineage = c("Lineage 2.2.2.1", "Lineage 2.2.2.2"))
+  lv4 <- ggtree(tree)+
+    geom_tiplab()+
+    # geom_text(aes(label=node), hjust=2, vjust = -1)+
+    geom_hilight(data = dat_lv4, 
+                 mapping = aes(node = id, fill = Lineage))+
+    ggtitle("Level 4")+
+    theme(plot.title = element_text(size = title_sz))
+  
+  output$levels_plot <- renderPlot({
+    grid.arrange(lv1, lv2, lv3, lv4, nrow = 2)
+  }, height = 500, width = 700)
+  
+  
+  # Spol table ----
   
   spol_data_43_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_github.csv"
   spol_data_68_url <- "https://raw.githubusercontent.com/GaryNapier/spolpred/master/results/spol_lin_levels_table_68_github.csv"
